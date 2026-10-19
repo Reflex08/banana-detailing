@@ -257,6 +257,10 @@
   .modal.lg{max-width:760px} .modal.sm{max-width:520px}
   .modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
   .modal-head h3{margin:0;font-size:18px;font-weight:800}
+  /* Action strip directly under the title — the reason you opened the sheet. */
+  .modal-acts{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .modal-acts:empty{display:none}
+  .modal-acts .btn{flex:1 1 0;min-width:96px;justify-content:center}
   .modal-head .hsub{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:2px}
   .x{border:0;background:transparent;font-size:24px;color:var(--faint);line-height:1;padding:2px 7px;border-radius:8px}
   .x:hover{background:var(--hover);color:var(--ink)}
@@ -384,10 +388,10 @@
 <!-- Customer modal -->
 <div class="overlay" id="cust-overlay"><div class="modal lg">
   <div class="modal-head"><div><h3 id="cust-title">New Customer</h3><div class="hsub" id="cust-hsub"></div></div><button class="x" id="cust-close">&times;</button></div>
+  <div class="modal-acts" id="cust-acts"></div>
   <div class="modal-body" id="cust-body"></div>
   <div class="modal-foot">
     <button class="btn del" id="cust-delete" style="display:none">Delete</button>
-    <button class="btn" id="cust-text" style="display:none">💬 Text</button>
     <button class="btn" id="cust-addjob" style="display:none">＋ New Job</button>
     <button class="btn" id="cust-cancel">Cancel</button>
     <button class="btn btn-primary" id="cust-save">Save Customer</button>
@@ -397,10 +401,10 @@
 <!-- Job modal -->
 <div class="overlay" id="job-overlay"><div class="modal">
   <div class="modal-head"><div><h3 id="job-title">New Job</h3><div class="hsub" id="job-hsub"></div></div><button class="x" id="job-close">&times;</button></div>
+  <div class="modal-acts" id="job-acts"></div>
   <div class="modal-body" id="job-body"></div>
   <div class="modal-foot">
     <button class="btn del" id="job-delete" style="display:none">Delete</button>
-    <button class="btn" id="job-confirm" style="display:none">📋 Confirm</button>
     <button class="btn" id="job-cancel">Cancel</button>
     <button class="btn btn-primary" id="job-save">Save Job</button>
   </div>
@@ -818,7 +822,7 @@ function heroCard(){
   // Roll first: the greeting and the stat line below must land on the same nickname.
   if(heroPick<0)heroPick=Math.floor(Math.random()*9973); // rolled once per app-open
   // Owner's real name sits in the pool alongside the nicknames, so it still comes up.
-  const NICKS=[(db.settings.business.owner||"").trim(),"boss","bossman","big guy","chief","champ","legend"].filter(Boolean);
+  const NICKS=[(db.settings.business.owner||"").trim(),"boss","bossman","big guy","chief","champ"].filter(Boolean);
   const name=NICKS[Math.floor(heroPick/7)%NICKS.length]; // /7 so it doesn't track the stat-line index
   const opts=[];
   if(week>0){
@@ -1288,13 +1292,41 @@ function renderTplList(){
 }
 
 /* ---------------- Customer modal ---------------- */
+/* Call / Text / Confirm for whichever sheet is open. `job` may be null on the customer
+   sheet, in which case Confirm targets their next booking — there is nothing to confirm
+   otherwise, so the button simply isn't drawn. */
+function actionBar(el,c,job){
+  const box=$(el); if(!box)return;
+  if(!c||!c.phone){box.innerHTML="";return;}
+  const tel=cleanNum(c.phone);
+  const conf=job&&job.id?job:null;
+  box.innerHTML=
+    `<a class="btn" href="tel:${esc(tel)}">📞 Call</a>`+
+    `<button class="btn" data-act="text">💬 Text</button>`+
+    (conf?`<button class="btn" data-act="confirm">${conf.termsAcceptedAt?"✓ Confirmed":"📋 Confirm"}</button>`:"");
+  const t=box.querySelector('[data-act="text"]');
+  if(t)t.onclick=()=>openSms(c,job||custNext(c.id)||custLast(c.id));
+  const cf=box.querySelector('[data-act="confirm"]');
+  if(cf)cf.onclick=()=>confirmAction(conf.id);
+}
+/* Shared by both sheets: send the link, or offer to resend/clear once it's confirmed. */
+function confirmAction(id){
+  const j=db.jobs.find(x=>x.id===id); if(!j)return;
+  if(j.termsAcceptedAt&&
+     !confirm(`Confirmed ${fmtWhen(j.termsAcceptedAt)}.\n\nOK = send the link again. Cancel = clear the confirmation.`)){
+    j.termsAcceptedAt=0;save();render();
+    if(editJob===id)openJob(id); else if(editCust)openCust(editCust);
+    toast("Confirmation cleared","ok");return;
+  }
+  sendConfirmLink(id);
+}
 function openCust(id){
   editCust=id; custDirty=false; const c=id?custById(id):null;
   $("#cust-title").textContent=c?c.name:"New Customer";
   $("#cust-hsub").textContent=c?(addrFull(c)||""):"";
   $("#cust-delete").style.display=c?"inline-block":"none";
-  $("#cust-text").style.display=(c&&c.phone)?"inline-block":"none";
   $("#cust-addjob").style.display=c?"inline-block":"none";
+  actionBar("#cust-acts",c,c?custNext(c.id):null); // Confirm targets their next booking
   draftLog=c?JSON.parse(JSON.stringify(c.log||[])):[];
   $("#cust-body").innerHTML=custForm(c);
   bindCustForm(c);
@@ -1406,7 +1438,6 @@ $("#cust-delete").onclick=()=>{const c=custById(editCust);if(!c)return;
   if(!confirm(`Delete "${c.name}"${n?` and their ${n} job(s)`:""}? This can't be undone.`))return;
   db.jobs=db.jobs.filter(j=>j.customerId!==c.id);db.customers=db.customers.filter(x=>x.id!==c.id);
   save();dismissCust();render();toast("Customer deleted");};
-$("#cust-text").onclick=()=>{const c=custById(editCust);persistCustEdits();const j=custNext(editCust)||custLast(editCust);openSms(c,j);};
 $("#cust-addjob").onclick=()=>{if(persistCustEdits())openJob(null,false,editCust);};
 // A tap closes a modal only if it STARTED on the backdrop — a scroll drag that ends past the
 // modal's edge makes the click land on the overlay and used to dismiss it mid-scroll on phones.
@@ -1423,8 +1454,7 @@ function openJob(id,focusPay,presetCust){
   const c=cid?custById(cid):null;
   $("#job-hsub").textContent=c?(c.name+(addrFull(c)?" · "+addrFull(c):"")):"";
   $("#job-delete").style.display=j?"inline-block":"none";
-  $("#job-confirm").style.display=(j&&c&&c.phone)?"inline-block":"none"; // needs a saved job and a number to text
-  $("#job-confirm").textContent=(j&&j.termsAcceptedAt)?`✓ Confirmed`:`📋 Confirm`;
+  actionBar("#job-acts",c,j); // Confirm needs a saved job — unsaved ones have no id to report
   $("#job-body").innerHTML=jobForm(j,cid);
   bindJobForm();
   $("#job-overlay").classList.add("show");
@@ -1544,16 +1574,7 @@ $("#job-delete").onclick=()=>{if(!editJob)return;if(!confirm("Delete this job? T
   db.jobs=db.jobs.filter(x=>x.id!==editJob);save();dismissJob();
   if($("#cust-overlay").classList.contains("show")&&editCust)openCust(editCust);render();toast("Job deleted");};
 $("#job-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#job-overlay")))closeJob();});
-$("#job-confirm").onclick=()=>{
-  if(!editJob)return;
-  const j=db.jobs.find(x=>x.id===editJob);
-  if(j&&j.termsAcceptedAt){
-    if(!confirm(`Confirmed ${fmtWhen(j.termsAcceptedAt)}.\n\nOK = send the link again. Cancel = clear the confirmation.`)){
-      j.termsAcceptedAt=0;save();render();openJob(editJob);toast("Confirmation cleared","ok");return;
-    }
-  }
-  sendConfirmLink(editJob);
-};
+
 
 /* ---------------- Client confirmation ----------------
    RELAY is a tiny Cloudflare worker (see relay/ in this repo). It exists only so a client
