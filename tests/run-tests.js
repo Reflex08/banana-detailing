@@ -34,6 +34,7 @@ const script = html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</scri
 const shim = script + `
 ;globalThis.__k = {DEFAULT_SERVICES,DEFAULT_TEMPLATES,DEFAULT_SETTINGS,QA_SERVICES,GOAL,KEY,OLDKEY,RELAY};
 ;globalThis.__setDb = v => { db = v; };
+;globalThis.__setSvc = v => { jobSvc = v; };
 `;
 
 // Minimal DOM: every lookup returns an inert node, so render paths run without throwing.
@@ -174,6 +175,21 @@ eq("new job prefills the vehicle from the customer's last job", A.lastVehicle(1)
 eq("unknown customer prefills nothing", A.lastVehicle(999), "");
 eq("no customer prefills nothing", A.lastVehicle(null), "");
 
+/* ---------- multi-service jobs (upsells) ---------- */
+A.__setSvc([]);
+eq("an empty service list totals nothing", A.jobTotal(), 0);
+A.__setSvc([{ name: "Express Wash & Wax", price: 60 }, { name: "Engine Bay Cleaning", price: 70 },
+            { name: "Pet Hair Removal", price: 60 }]);
+eq("the total is the sum of every row", A.jobTotal(), 190);
+ok("each row renders its own price input",
+   (A.svcLinesHTML().match(/data-svcp=/g) || []).length === 3);
+ok("each row can be removed",
+   (A.svcLinesHTML().match(/data-svcx=/g) || []).length === 3);
+ok("the add control offers the services not already on the job",
+   A.svcLinesHTML().includes("Ceramic Coating") && !/>Pet Hair Removal —/.test(A.svcLinesHTML()));
+A.__setSvc([{ name: "Interior Detail", price: 150 }]);
+eq("one row still totals correctly", A.jobTotal(), 150);
+
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
    K.KEY.startsWith("banana.") && !script.includes("servicepro"), K.KEY);
@@ -189,6 +205,8 @@ for (const [name, token] of [
   ["the baked contact import is gone", "CONTACTS_IMPORT"],
   ["the day timeline is gone", "renderDayTimeline"],
   ["the schedule view switcher is gone", "schedView"],
+  ["the single price field is gone", "jf-price"],
+  ["the half-typed job draft detour is gone", "restoreJobDraft"],
 ]) ok(name, !script.includes(token));
 ok("no real phone numbers are baked into the app",
    !/\+1(?!555)\d{10}/.test(script));

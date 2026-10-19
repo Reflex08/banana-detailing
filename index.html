@@ -252,6 +252,17 @@
   .modal-acts{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .modal-acts:empty{display:none}
   .modal-acts .btn{flex:1 1 0;min-width:96px;justify-content:center}
+  /* One row per service on a job: name, its own price, and a round x to drop it. */
+  .svc-line{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .svc-line .nm{flex:1;min-width:0;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .svc-line .pw{position:relative;flex:0 0 108px}
+  .svc-line .pw .sym{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:13px}
+  .svc-line .pw input{width:100%;padding:9px 10px 9px 24px;text-align:right;border:1px solid var(--line);
+    border-radius:9px;background:var(--field-bg);color:var(--ink);font-family:inherit;font-size:14px;font-weight:700}
+  .svc-rm{flex:0 0 32px;width:32px;height:32px;padding:0;border-radius:50%;display:inline-flex;
+    align-items:center;justify-content:center;line-height:1;font-size:15px}
+  .svc-total{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0 2px;font-weight:800}
+  .svc-total .t{font-size:19px}
   .modal-head .hsub{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:2px}
   .x{border:0;background:transparent;font-size:24px;color:var(--faint);line-height:1;padding:2px 7px;border-radius:8px}
   .x:hover{background:var(--hover);color:var(--ink)}
@@ -601,7 +612,9 @@ let dashRevTab="revenue"; // revenue | goal — in-memory only
 let schedDay=today();     // ISO day shown by the timeline — in-memory only
 let schedAnchor=null;     // first day of the "7 days" strip; pinned so the columns don't slide under you
                           // (schedDay is the day the header reports on — selecting one never moves the strip)
-let editCust=null,editJob=null,draftLog=[],smsCtx=null,jobDraft=null,jobDirty=false,custDirty=false,toastTimer=null;
+let editCust=null,editJob=null,draftLog=[],smsCtx=null,jobDirty=false,custDirty=false,toastTimer=null;
+let jobSvc=[];            // the service rows on the sheet right now: [{name,price}]
+let jobCustMode="pick";   // "new" = type a client inline | "pick" = choose one from the book
 
 /* ---------------- Utils ---------------- */
 const $=s=>document.querySelector(s);
@@ -1363,24 +1376,10 @@ function persistCustEdits(){ // save without closing (used before opening a job)
 function saveCust(){
   if(!$("#cf-name").value.trim()){toast("Please enter a name","err");$("#cf-name").focus();return;}
   persistCustEdits();
-  const cid=editCust, d=jobDraft; jobDraft=null;
   dismissCust(); render();
-  if(d){restoreJobDraft(d,cid);toast("Customer saved — job filled back in","ok");}
-  else toast("Customer saved","ok");
+  toast("Customer saved","ok");
 }
-function restoreJobDraft(d,cid){ // came from "＋ Add a new customer first" — give back the half-typed job
-  openJob(null,false,cid); jobDirty=true; // restored draft counts as typed — clicking out saves it
-  const svcSel=$("#jf-service");
-  const has=[...(svcSel.options||[])].some(o=>o.value===d.service);
-  if(has)svcSel.value=d.service;
-  else if(d.service){svcSel.value="__custom";$("#jf-customwrap").style.display="";$("#jf-customsvc").value=d.service;}
-  $("#jf-price").value=d.price||"";$("#jf-date").value=d.date||today();$("#jf-time").value=d.time||"";
-  $("#jf-status").value=d.status||"scheduled";$("#jf-notes").value=d.notes||"";
-  $("#jf-collected").value=d.collected||"";$("#jf-vehicle").value=d.vehicle||"";
-  $("#jf-paymethod").value=d.payMethod||"";
-  updateBalHint();
-}
-function dismissCust(){$("#cust-overlay").classList.remove("show");editCust=null;jobDraft=null;}
+function dismissCust(){$("#cust-overlay").classList.remove("show");editCust=null;}
 // Clicking out of the modal SAVES (owner: no scrolling to the Save button). Untouched = just closes.
 function closeCust(){
   if(!$("#cust-overlay").classList.contains("show"))return;
@@ -1412,9 +1411,15 @@ function openJob(id,focusPay,presetCust){
   const c=cid?custById(cid):null;
   $("#job-hsub").textContent=c?(c.name+(addrFull(c)?" · "+addrFull(c):"")):"";
   $("#job-delete").style.display=j?"inline-block":"none";
+  // Jobs written before the services list carry a single service+price; show that as one row.
+  jobSvc = j ? (Array.isArray(j.services)&&j.services.length
+                 ? j.services.map(s=>({name:s.name,price:+s.price||0}))
+                 : (j.service?[{name:j.service,price:+j.price||0}]:[]))
+             : (db.settings.services[0]?[{name:db.settings.services[0].name,price:db.settings.services[0].price}]:[]);
+  jobCustMode = (j||cid) ? "pick" : "new"; // only a cold "New job" starts by typing a client
   actionBar("#job-acts",c,j); // Confirm needs a saved job — unsaved ones have no id to report
   $("#job-body").innerHTML=jobForm(j,cid);
-  bindJobForm();
+  bindJobForm(cid);
   $("#job-overlay").classList.add("show");
   setTimeout(()=>{if(focusPay){const p=$("#jf-collected");if(p){p.focus();p.select();}}else if(!j){const sel=$("#jf-cust");if(sel&&!cid)sel.focus();}},50);
 }
@@ -1426,29 +1431,91 @@ function lastVehicle(cid){
     .sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.id-a.id)[0];
   return prev?prev.vehicle:"";
 }
+/* The service rows plus the add control. Repainted on its own so editing the list never
+   disturbs anything else you have typed on the sheet. */
+function svcLinesHTML(){
+  const used=jobSvc.map(s=>s.name);
+  const rest=db.settings.services.filter(s=>used.indexOf(s.name)<0);
+  const rows=jobSvc.map((s,i)=>`
+    <div class="svc-line">
+      <div class="nm">${esc(s.name)}</div>
+      <div class="pw"><span class="sym">$</span><input type="number" min="0" step="1" data-svcp="${i}" value="${s.price||""}"></div>
+      <button type="button" class="btn svc-rm" data-svcx="${i}" aria-label="Remove ${esc(s.name)}">×</button>
+    </div>`).join("");
+  const total=jobSvc.reduce((t,s)=>t+(+s.price||0),0);
+  return rows+
+    `<div class="field" style="margin-top:10px"><select id="jf-addsvc">
+       <option value="">＋ Add service…</option>
+       ${rest.map(s=>`<option value="${esc(s.name)}" data-price="${s.price}">${esc(s.name)} — ${money(s.price)}</option>`).join("")}
+       <option value="__custom">Other / custom…</option>
+     </select></div>`+
+    (jobSvc.length?`<div class="svc-total"><span>Total</span><span class="t">${money2(total)}</span></div>`:
+      `<div class="hint">Add at least one service.</div>`);
+}
+function repaintSvc(){const b=$("#jf-svcbox"); if(!b)return; b.innerHTML=svcLinesHTML(); bindSvc(); updateBalHint();}
+function bindSvc(){
+  document.querySelectorAll("[data-svcp]").forEach(i=>i.oninput=()=>{
+    jobSvc[+i.dataset.svcp].price=+i.value||0;
+    const t=$("#jf-svcbox").querySelector(".svc-total .t");
+    if(t)t.textContent=money2(jobSvc.reduce((s,x)=>s+(+x.price||0),0));
+    updateBalHint();
+  });
+  document.querySelectorAll("[data-svcx]").forEach(b=>b.onclick=()=>{jobSvc.splice(+b.dataset.svcx,1);repaintSvc();});
+  const add=$("#jf-addsvc");
+  if(add)add.onchange=()=>{
+    const v=add.value; if(!v)return;
+    if(v==="__custom"){
+      const nm=(prompt("Service name")||"").trim();
+      if(nm)jobSvc.push({name:nm,price:0});
+    }else{
+      const o=add.selectedOptions[0];
+      jobSvc.push({name:v,price:+(o&&o.dataset.price)||0});
+    }
+    repaintSvc();
+  };
+}
+/* The client block has two modes. A brand-new job opens on "new", because that is how work
+   actually turns up — someone you have never met calls. Editing, or starting from a client's
+   card, opens on "pick". */
+function custBlockHTML(cid){
+  if(jobCustMode==="new")return `
+    <div class="field"><label>Name *</label><input id="jf-newname" placeholder="New client" value=""></div>
+    <div class="field"><label>Phone</label><input id="jf-newphone" type="tel" value=""></div>
+    <div class="field"><label>Address</label><input id="jf-address" value="">
+      <div class="hint"><span style="color:var(--brand);cursor:pointer;font-weight:700" id="jf-mode">Existing client instead…</span></div></div>`;
+  const cc=cid?custById(cid):null;
+  const opts=`<option value="">— choose client —</option>`+db.customers.slice()
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .map(c=>`<option value="${c.id}" ${cid===c.id?"selected":""}>${esc(c.name)}${c.city?" — "+esc(c.city):""}</option>`).join("");
+  return `
+    <div class="field"><label>Client *</label><select id="jf-cust">${opts}</select></div>
+    <div class="field"><label>Address</label><input id="jf-address" value="${cc?esc(cc.street||""):""}">
+      <div class="hint">Saved on the client's card — edits here update it everywhere.
+        · <span style="color:var(--brand);cursor:pointer;font-weight:700" id="jf-mode">New client instead…</span></div></div>`;
+}
+function renderCustBlock(cid){const b=$("#jf-custbox"); if(!b)return; b.innerHTML=custBlockHTML(cid); bindCustBlock(cid);}
+function bindCustBlock(cid){
+  const sel=$("#jf-cust");
+  if(sel)sel.onchange=()=>{const c=custById(+sel.value);$("#jf-address").value=c?(c.street||""):"";
+    const v=$("#jf-vehicle"); if(v&&!v.value)v.value=lastVehicle(+sel.value);};
+  const m=$("#jf-mode");
+  if(m)m.onclick=()=>{jobCustMode=jobCustMode==="new"?"pick":"new";renderCustBlock(cid);};
+}
 function jobForm(j,cid){
-  const custOpts=`<option value="">— choose customer —</option>`+db.customers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${cid===c.id?"selected":""}>${esc(c.name)}${c.city?" — "+esc(c.city):""}</option>`).join("");
-  const svcOpts=db.settings.services.map(s=>`<option value="${esc(s.name)}" data-price="${s.price}" ${j&&j.service===s.name?"selected":""}>${esc(s.name)}</option>`).join("")
-    +`<option value="__custom" ${j&&!db.settings.services.some(s=>s.name===j.service)?"selected":""}>Other / custom…</option>`;
-  const isCustom=j&&!db.settings.services.some(s=>s.name===j.service);
   const statusOpts=JOB_STATUS.map(s=>`<option value="${s.id}" ${j&&j.status===s.id?"selected":""}>${s.label}</option>`).join("");
   const payOpts=`<option value="">— method —</option>`+PAY_METHODS.map(p=>`<option ${j&&j.payMethod===p?"selected":""}>${p}</option>`).join("");
-  const price=j?j.price:"";
-  const cc=cid?custById(cid):null;
   return `
-    <div class="field"><label>Customer *</label><select id="jf-cust">${custOpts}</select>
-      <div class="hint">Not in the list? <span style="color:var(--brand);cursor:pointer;font-weight:700" id="jf-newcust">＋ Add a new customer first</span></div></div>
-    <div class="field"><label>Address</label><input id="jf-address" value="${cc?esc(cc.street||""):""}">
-      <div class="hint">Saved on the customer's card — edits here update it everywhere.</div></div>
-    <div class="grid2">
-      <div class="field"><label>Service</label><select id="jf-service">${svcOpts}</select></div>
-      <div class="field" id="jf-customwrap" style="${isCustom?"":"display:none"}"><label>Custom service name</label><input id="jf-customsvc" value="${isCustom?esc(j.service):""}"></div>
-      <div class="field pre"><label>Price / quote</label><span class="sym" style="top:33px">$</span><input id="jf-price" type="number" min="0" step="1" value="${price}"></div>
-    </div>
+    <div id="jf-custbox">${custBlockHTML(cid)}</div>
+    <div class="sec">🧰 Services</div>
+    <div id="jf-svcbox">${svcLinesHTML()}</div>
     <div class="grid3">
       <div class="field"><label>Date</label><input id="jf-date" type="date" value="${j?esc(j.date):today()}"></div>
       <div class="field"><label>Time</label><input id="jf-time" type="time" value="${j?esc(j.time||""):"09:00"}"></div>
       <div class="field"><label>Status</label><select id="jf-status">${statusOpts}</select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>🚗 Vehicle</label><input id="jf-vehicle" placeholder="2019 Honda Civic — black" value="${esc(j?(j.vehicle||""):lastVehicle(cid))}"></div>
+      <div class="field"><label>Pay method</label><select id="jf-paymethod">${payOpts}</select></div>
     </div>
     <div class="field"><label>Job notes</label><textarea id="jf-notes">${j?esc(j.notes||""):""}</textarea></div>
     <div class="sec">💵 Payment</div>
@@ -1456,45 +1523,42 @@ function jobForm(j,cid){
       <div class="field pre"><label>Collected</label><span class="sym" style="top:33px">$</span><input id="jf-collected" type="number" min="0" step="1" value="${j?(j.collected||""):""}"></div>
       <div class="field"><label>&nbsp;</label><button class="btn" id="jf-payfull" style="width:100%">Mark paid in full</button></div>
     </div>
-    <div id="jf-balhint" class="hint"></div>
-    <div class="grid2">
-      <div class="field"><label>🚗 Vehicle</label><input id="jf-vehicle" placeholder="2019 Honda Civic — black" value="${esc(j?(j.vehicle||""):lastVehicle(cid))}"></div>
-      <div class="field"><label>Pay method</label><select id="jf-paymethod">${payOpts}</select></div>
-    </div>`;
+    <div id="jf-balhint" class="hint"></div>`;
 }
-function bindJobForm(){
-  const svc=$("#jf-service"),priceI=$("#jf-price");
-  const fillDefault=()=>{const o=svc.selectedOptions[0];
-    if(svc.value!=="__custom"&&o&&o.dataset.price&&(!priceI.value||priceI.value==="0"))priceI.value=o.dataset.price;};
-  svc.onchange=()=>{
-    $("#jf-customwrap").style.display=svc.value==="__custom"?"":"none";
-    fillDefault(); // fills the service's default price only when the box is empty — never wipes a price you typed
-  };
-  if(editJob===null)fillDefault(); // brand-new job opens pre-filled with the service's default price
-  $("#jf-cust").onchange=()=>{const c=custById(+$("#jf-cust").value);$("#jf-address").value=c?(c.street||""):"";};
-  $("#jf-payfull").onclick=()=>{const p=+priceI.value||0;$("#jf-collected").value=p;updateBalHint();};
-  [priceI,$("#jf-collected")].forEach(i=>i.addEventListener("input",updateBalHint));
-  $("#jf-newcust").onclick=()=>{ // keep everything already typed — restored after the customer is saved
-    jobDraft=gatherJob(); jobDraft.address=$("#jf-address").value.trim();
-    dismissJob(); openCust(null); // dismiss, not close — the draft carries the typing, nothing must half-save
-    if(jobDraft.address)$("#cf-street").value=jobDraft.address;
-  };
+function bindJobForm(cid){
+  bindCustBlock(cid); bindSvc();
+  $("#jf-payfull").onclick=()=>{$("#jf-collected").value=jobTotal();updateBalHint();};
+  $("#jf-collected").addEventListener("input",updateBalHint);
   updateBalHint();
 }
-function updateBalHint(){const p=+$("#jf-price").value||0,c=+$("#jf-collected").value||0;const bal=Math.max(0,p-c);
+function jobTotal(){return jobSvc.reduce((t,s)=>t+(+s.price||0),0);}
+function updateBalHint(){const p=jobTotal(),c=+$("#jf-collected").value||0;const bal=Math.max(0,p-c);
   const el=$("#jf-balhint");if(!el)return;
   el.innerHTML = p<=0?"" : bal>0?`Balance remaining: <b style="color:var(--red)">${money(bal)}</b>` : `<b style="color:var(--green)">Paid in full ✓</b>`;
 }
+/* services is the truth; service and price are the joined name and the total, kept in step
+   so every reader downstream (cards, revenue, CSV, the confirm link) needs no changes. */
 function gatherJob(){
-  let service=$("#jf-service").value; if(service==="__custom")service=$("#jf-customsvc").value.trim()||"Custom service";
-  return {customerId:+$("#jf-cust").value||null,service,price:+$("#jf-price").value||0,
+  const services=jobSvc.map(s=>({name:s.name,price:+s.price||0}));
+  const sel=$("#jf-cust");
+  return {customerId:sel?(+sel.value||null):null,
+    services, service:services.map(s=>s.name).join(" + "), price:jobTotal(),
     date:$("#jf-date").value||today(),time:$("#jf-time").value||"",recurring:"none",
     status:$("#jf-status").value,vehicle:$("#jf-vehicle").value.trim(),notes:$("#jf-notes").value.trim(),
     collected:+$("#jf-collected").value||0,payMethod:$("#jf-paymethod").value};
 }
 function saveJob(){
   const data=gatherJob();
-  if(!data.customerId){toast("Pick a customer for this job","err");$("#jf-cust").focus();return;}
+  if(!data.services.length){toast("Add at least one service","err");return;}
+  if(jobCustMode==="new"){ // the client is being typed right here — create them, then book onto them
+    const nm=($("#jf-newname").value||"").trim();
+    if(!nm){toast("Name the client","err");$("#jf-newname").focus();return;}
+    const c={id:db.seqC++,name:nm,phone:cleanNum($("#jf-newphone").value)||"",email:"",
+      street:$("#jf-address").value.trim(),city:"",state:"",zip:"",status:"active",source:"",
+      tags:[],access:"",notes:"",followup:"",log:[],created:Date.now()};
+    db.customers.push(c); data.customerId=c.id;
+  }
+  if(!data.customerId){toast("Pick a client for this job","err");const s=$("#jf-cust");if(s)s.focus();return;}
   const cAddr=custById(data.customerId); // address box edits the customer's card (add / change / clear)
   if(cAddr){const a=$("#jf-address").value.trim();if(a!==(cAddr.street||""))cAddr.street=a;}
   let wasCompleted=false, j;
