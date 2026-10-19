@@ -7,7 +7,7 @@ Single-file CRM for a car-detailing business. No build step, no dependencies, no
 
 ## What it does
 
-Schedule (7-day strip + day timeline) · clients and leads · jobs with vehicle details ·
+Schedule (rolling 7-day strip) · clients and leads · jobs with vehicle details ·
 quotes with Accept & Sign · revenue dashboard against a $5,000/month goal · text templates
 that hand off to the phone's own SMS app.
 

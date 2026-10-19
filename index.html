@@ -226,15 +226,6 @@
   .tlh-dow{color:var(--muted);font-size:14px;font-weight:600;text-align:left;font-style:italic}
   .tlh-date{font-size:26px;font-weight:800;text-align:left;letter-spacing:-.3px}
   .tl-rev{text-align:left;color:var(--muted);font-size:13px;margin:4px 0 0;font-style:italic}
-  .tl-row{display:flex;gap:10px;border-top:1px solid var(--line);min-height:54px}
-  .tl-hour{width:52px;flex-shrink:0;color:var(--faint);font-size:11px;font-weight:700;padding-top:8px;text-align:right}
-  .tl-slot{flex:1;display:flex;flex-wrap:wrap;gap:8px;padding:8px 0}
-  .tl-card{background:linear-gradient(135deg,#1c3f66,#2a6ba8);border-radius:14px;padding:10px 12px;min-width:150px;max-width:100%;cursor:pointer;flex:1 1 150px}
-  .tl-card.done{background:linear-gradient(135deg,#14532d,#166534)}
-  .tl-card .n{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tl-card .s{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:1px}
-  .tl-card .tr{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:1px}
-  .tl-card .p{font-weight:800;font-size:14px;margin-top:6px}
   .jobcard{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;
     padding:13px 16px;box-shadow:var(--shadow);margin-bottom:10px}
   .jobcard:hover{border-color:rgba(255,255,255,.3)}
@@ -607,9 +598,9 @@ let view="dashboard",query="",custFilter="all",custSort="name-asc",moneyPeriod="
 let custSearchOpen=false,custPage=0,custPageSize=25;
 let dashRevPeriod=uiPref().revPeriod||"month"; // chart style: smooth area, everywhere (bars/line retired)
 let dashRevTab="revenue"; // revenue | goal — in-memory only
-let schedView=uiPref().schedView==="day"?"day":"week"; // week | day — anything else falls back to week
 let schedDay=today();     // ISO day shown by the timeline — in-memory only
 let schedAnchor=null;     // first day of the "7 days" strip; pinned so the columns don't slide under you
+                          // (schedDay is the day the header reports on — selecting one never moves the strip)
 let editCust=null,editJob=null,draftLog=[],smsCtx=null,jobDraft=null,jobDirty=false,custDirty=false,toastTimer=null;
 
 /* ---------------- Utils ---------------- */
@@ -633,8 +624,6 @@ function fmtDate(d,opt){if(!d)return"—";const x=new Date(d+"T00:00:00");
 function fmtDateShort(d){if(!d)return"—";const x=new Date(d+"T00:00:00");return x.toLocaleDateString(undefined,{month:"short",day:"numeric"});}
 function fmtDow(d){if(!d)return"";const x=new Date(d+"T00:00:00");return x.toLocaleDateString(undefined,{weekday:"short"});}
 function fmtTime(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";const hh=((h+11)%12)+1;return `${hh}:${String(m).padStart(2,"0")} ${ap}`;}
-function tlTimeRange(t){if(!t)return"";const[h,m]=t.split(":").map(Number);let eh=h+1,em=m;if(eh>23){eh=23;em=59;}
-  return `${fmtTime(t)} - ${fmtTime(`${eh}:${em}`)}`;}
 function fmtWhen(ts){return new Date(ts).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
 function toast(m,kind){const t=$("#toast");clearTimeout(toastTimer);t.textContent=m;t.className="toast show"+(kind?(" "+kind):"");toastTimer=setTimeout(()=>t.className="toast",kind==="err"?3400:2300);}
 function toastAction(m,btnLabel,fn){const t=$("#toast");clearTimeout(toastTimer);t.textContent=m;
@@ -890,24 +879,21 @@ function renderDashboard(){
 }
 
 /* ---- Schedule ---- */
-/* Switching to the Day view from the strip. Idempotent: re-opening the day already shown
-   just redraws, which is what makes the doubled click/pointerup binding safe. */
+/* Selecting a day in the strip: it highlights, and the header switches to that day's
+   takings. Idempotent, which is what makes the doubled click/pointerup binding safe. */
 function openDay(iso){
-  if(!iso)return;
-  schedDay=iso; schedView="day"; schedAnchor=null; uiSet({schedView}); renderSchedule();
+  if(!iso||iso===schedDay)return;
+  schedDay=iso; renderSchedule();
 }
 function renderSchedule(){
-  if(schedView==="week"&&!schedAnchor)schedAnchor=schedDay; // pin the strip's start once
-  $("#content").innerHTML=schedHeader()+(schedView==="week"?renderWeek():renderDayTimeline());
+  if(!schedAnchor)schedAnchor=schedDay; // pin the strip's start once
+  $("#content").innerHTML=schedHeader()+renderWeek();
   document.querySelectorAll("[data-dnav]").forEach(b=>b.onclick=()=>{
     const delta=+b.dataset.dnav;
-    if(!delta){ schedDay=today(); schedAnchor=schedView==="week"?today():null; }
-    else if(schedView==="week"){ // ‹ › page the whole strip; focus follows to its first day
+    if(!delta){ schedDay=today(); schedAnchor=today(); }
+    else { // ‹ › page the whole strip; the reported day follows to its first column
       const d=new Date((schedAnchor||schedDay)+"T12:00:00"); d.setDate(d.getDate()+delta);
       schedAnchor=localISO(d); schedDay=schedAnchor;
-    } else {
-      const d=new Date(schedDay+"T12:00:00"); d.setDate(d.getDate()+delta);
-      schedDay=localISO(d); schedAnchor=null;
     }
     renderSchedule();
   });
@@ -919,9 +905,7 @@ function renderSchedule(){
     c.onpointerup=open;              // iOS drops the synthetic click on a plain div often enough to matter
     c.onkeydown=e=>{if(e.key==="Enter"||e.key===" ")open(e);};
   });
-  const sv=$("#sched-view"); if(sv) sv.onchange=()=>{schedView=sv.value;schedAnchor=null;uiSet({schedView});renderSchedule();};
   const ss=$("#sched-search"); if(ss) ss.onclick=()=>{view="customers";custSearchOpen=true;render();};
-  const e3=$("#empty-add3"); if(e3) e3.onclick=()=>openJob(null);
   bindJobCards();
 }
 /* Shared floating header for Week and Day: title/rev block (left) + nav arrows + view pill + search. */
@@ -939,7 +923,6 @@ function schedHeader(){
   // Always the selected day's total, in both views — the strip is just a wider way to look at it.
   const jobs=db.jobs.filter(j=>j.date===schedDay&&j.status!=="cancelled");
   const rev=jobs.reduce((s,j)=>s+(j.status==="completed"?(+j.collected||0):(+j.price||0)),0);
-  const step=schedView==="week"?7:1;
   return `<div class="tl-head">
     <div class="tlh-wrap">
       <div class="tlh-dow">${esc(dow)}</div>
@@ -947,14 +930,8 @@ function schedHeader(){
       <div class="tl-rev">Total rev: <span style="color:var(--cyan);font-weight:800">${money(rev)}</span>${
         schedDay!==today()?` · <button class="btn sm" data-dnav="0">Today</button>`:""}</div>
     </div>
-    <button class="nb" data-dnav="-${step}" aria-label="Back">‹</button>
-    <button class="nb" data-dnav="${step}" aria-label="Forward">›</button>
-    <div class="fpill">${schedView==="day"?"Day":"7 days"} ⌄
-      <select id="sched-view" aria-label="Schedule view">
-        <option value="day" ${schedView==="day"?"selected":""}>Day</option>
-        <option value="week" ${schedView==="week"?"selected":""}>7 days</option>
-      </select>
-    </div>
+    <button class="nb" data-dnav="-7" aria-label="Back a week">‹</button>
+    <button class="nb" data-dnav="7" aria-label="Forward a week">›</button>
     <button class="fcir" id="sched-search" title="Search">⌕</button>
   </div>`;
 }
@@ -982,34 +959,6 @@ function renderWeek(){
     </div>`;
   }).join("");
   return `<div class="week-wrap"><div class="week-grid">${cols}</div></div>`;
-}
-/* Day timeline: one ISO day, 6AM–9PM hour rows + an Anytime bucket. */
-function renderDayTimeline(){
-  const jobs=db.jobs.filter(j=>j.date===schedDay&&j.status!=="cancelled")
-    .sort((a,b)=>(a.time||"").localeCompare(b.time||""));
-
-  if(!jobs.length) return `<div class="panel"><div class="empty">Nothing booked this day.<br><button class="btn btn-primary" id="empty-add3">＋ New Job</button></div></div>`;
-
-  const anytime=jobs.filter(j=>!j.time);
-  let body=anytime.length?`<div class="tl-row"><div class="tl-hour">Anytime</div><div class="tl-slot">${anytime.map(tlCard).join("")}</div></div>`:"";
-  for(let h=6;h<=21;h++){
-    const list=jobs.filter(j=>{ if(!j.time) return false;
-      const jh=Math.min(21,Math.max(6,parseInt(j.time,10)||0)); return jh===h; });
-    const ap=h>=12?"PM":"AM", hh=((h+11)%12)+1;
-    body+=`<div class="tl-row"><div class="tl-hour">${hh} ${ap}</div><div class="tl-slot">${list.map(tlCard).join("")}</div></div>`;
-  }
-  return body;
-}
-function tlCard(j){
-  const c=custById(j.customerId)||{name:"(deleted customer)"};
-  const done=j.status==="completed";
-  const range=j.time?tlTimeRange(j.time):"";
-  return `<div class="tl-card ${done?"done":""}" data-jobcard="${j.id}">
-    <div class="n">${done?"✓ ":""}${esc(c.name)}</div>
-    <div class="s">${esc(j.service)}${j.vehicle?" · "+esc(j.vehicle):""}</div>
-    ${range?`<div class="tr">${esc(range)}</div>`:""}
-    <div class="p">${money2(j.price)}</div>
-  </div>`;
 }
 function jobCard(j,overdueFlag){
   const c=custById(j.customerId)||{name:"(deleted customer)"};

@@ -187,6 +187,8 @@ for (const [name, token] of [
   ["the signature pad is gone", "signPad"],
   ["the commissions leaderboard is gone", "leaderboardPanel"],
   ["the baked contact import is gone", "CONTACTS_IMPORT"],
+  ["the day timeline is gone", "renderDayTimeline"],
+  ["the schedule view switcher is gone", "schedView"],
 ]) ok(name, !script.includes(token));
 ok("no real phone numbers are baked into the app",
    !/\+1(?!555)\d{10}/.test(script));
