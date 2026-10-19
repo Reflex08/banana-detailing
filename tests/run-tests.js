@@ -32,7 +32,7 @@ const script = html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</scri
    `var` do, and the module's own `db` binding is likewise unreachable from outside. This
    snippet runs in the same scope and hands both out. */
 const shim = script + `
-;globalThis.__k = {DEFAULT_SERVICES,DEFAULT_TEMPLATES,DEFAULT_SETTINGS,QA_SERVICES,GOAL,KEY,OLDKEY,RELAY};
+;globalThis.__k = {DEFAULT_SERVICES,DEFAULT_SETTINGS,QA_SERVICES,GOAL,KEY,OLDKEY,RELAY};
 ;globalThis.__setDb = v => { db = v; };
 ;globalThis.__setSvc = v => { jobSvc = v; };
 `;
@@ -190,6 +190,25 @@ ok("the add control offers the services not already on the job",
 A.__setSvc([{ name: "Interior Detail", price: 150 }]);
 eq("one row still totals correctly", A.jobTotal(), 150);
 
+/* ---------- done / not done ---------- */
+A.__setDb(A.normalize({
+  customers: [{ id: 1, name: "Marcus Webb", phone: "+15550102", log: [] }],
+  jobs: [{ id: 1, customerId: 1, service: "Interior Detail", price: 150, collected: 150,
+           date: "2026-10-14", status: "completed", completedAt: 1, termsAcceptedAt: 1 }],
+  settings: K.DEFAULT_SETTINGS(), seqC: 2, seqJ: 2,
+}));
+A.uncompleteJob(1);
+const undone = A.db.jobs[0];
+eq("Not done puts the job back to booked", undone.status, "scheduled");
+eq("Not done clears the collected amount", undone.collected, 0);
+eq("Not done clears the completed stamp", undone.completedAt, 0);
+ok("Not done leaves a trail of what was collected",
+   A.db.customers[0].log.some(l => /Done undone/.test(l.m) && /150/.test(l.m)));
+ok("a booked card is blue, not green", A.weekCard(undone).indexOf("week-card done") < 0);
+ok("a booked card keeps the confirmed tick", A.weekCard(undone).includes('class="ck"'));
+A.db.jobs[0].status = "completed";
+ok("a done card is green", A.weekCard(A.db.jobs[0]).includes("week-card done"));
+
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
    K.KEY.startsWith("banana.") && !script.includes("servicepro"), K.KEY);
@@ -207,6 +226,8 @@ for (const [name, token] of [
   ["the schedule view switcher is gone", "schedView"],
   ["the single price field is gone", "jf-price"],
   ["the half-typed job draft detour is gone", "restoreJobDraft"],
+  ["text templates are gone", "DEFAULT_TEMPLATES"],
+  ["the template picker is gone", "applySmsTpl"],
 ]) ok(name, !script.includes(token));
 ok("no real phone numbers are baked into the app",
    !/\+1(?!555)\d{10}/.test(script));

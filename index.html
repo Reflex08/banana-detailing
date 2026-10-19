@@ -302,6 +302,9 @@
   .week-card .wt{font-size:10px;color:rgba(255,255,255,.7);font-weight:700}
   .week-card .wn{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .week-card .wp{font-size:11.5px;font-weight:800;margin-top:2px}
+  /* Client-confirmed tick — readable on both the blue and the green card. */
+  .week-card .ck{display:inline-block;margin-left:4px;font-size:10px;font-weight:800;
+    background:rgba(255,255,255,.22);border-radius:20px;padding:0 5px;line-height:15px;vertical-align:middle}
   .week-empty{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0;font-style:italic}
 
   /* customer detail bits */
@@ -329,7 +332,6 @@
   .note{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:12.5px;color:var(--muted)}
   .note b{color:var(--ink)}
   .counter{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600}
-  .tpl-row{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:11px;margin-bottom:10px}
   .svc-row{display:flex;gap:9px;align-items:center;margin-bottom:8px}
   .svc-row input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field-bg);color:var(--ink)}
 
@@ -408,7 +410,7 @@
   <div class="modal-foot">
     <button class="btn del" id="job-delete" style="display:none">Delete</button>
     <button class="btn" id="job-cancel">Cancel</button>
-    <button class="btn btn-primary" id="job-save">Save Job</button>
+    <button class="btn btn-primary" id="job-save">Book</button>
   </div>
 </div></div>
 
@@ -417,7 +419,6 @@
   <div class="modal-head"><h3 id="sms-title">Send a text</h3><button class="x" id="sms-close">&times;</button></div>
   <div class="modal-body">
     <div class="field"><label>To</label><input id="sms-to" placeholder="+1 555 123 4567"></div>
-    <div class="field"><label>Template</label><select id="sms-template"></select></div>
     <div class="field"><label>Message</label><textarea id="sms-body" style="min-height:110px"></textarea>
       <div class="counter" id="sms-counter"></div><div class="chips" id="sms-vars"></div></div>
     <div class="note" id="sms-note"></div>
@@ -495,15 +496,7 @@ const DEFAULT_SERVICES=[
   {name:"Engine Bay Cleaning",price:70},{name:"Headlight Restoration",price:80},
   {name:"Pet Hair Removal",price:60},{name:"Odor / Ozone Treatment",price:90},
 ];
-const DEFAULT_TEMPLATES=[
-  {id:"t1",name:"Appointment reminder",body:"Hi {firstname}, this is {business}. Friendly reminder we're scheduled for your {service} on {date} at {time}. Reply C to confirm or R to reschedule. Thanks!"},
-  {id:"t2",name:"On our way",body:"Hi {firstname}, {business} here — we're on our way for your {service} and will arrive shortly. See you soon!"},
-  {id:"t3",name:"Job complete + balance",body:"Hi {firstname}, thanks for choosing {business}! Your {service} is complete. Balance due: {balance}. We appreciate your business — reviews are always welcome!"},
-  {id:"t4",name:"Re-book / it's been a while",body:"Hi {firstname}, it's been a while since your last {service} with {business}. Want us to get you back on the schedule? Reply YES and we'll set it up."},
-  {id:"t5",name:"Quote follow-up",body:"Hi {firstname}, following up on your {service} estimate from {business}. Happy to answer any questions or get you booked. Just let me know!"},
-  {id:"t6",name:"Review request",body:"Hi {firstname}, thanks for having us today! If you were happy with the work, a quick Google review would mean a lot. — Banana Detailing"},
-];
-const DEFAULT_SETTINGS=()=>({business:{name:"Banana Detailing",owner:"Igor",phone:"",email:"",notify:"koncurigor2008@gmail.com"},services:JSON.parse(JSON.stringify(DEFAULT_SERVICES)),templates:JSON.parse(JSON.stringify(DEFAULT_TEMPLATES))});
+const DEFAULT_SETTINGS=()=>({business:{name:"Banana Detailing",owner:"Igor",phone:"",email:"",notify:"koncurigor2008@gmail.com"},services:JSON.parse(JSON.stringify(DEFAULT_SERVICES))});
 
 /* ---------------- Storage + migration ---------------- */
 let db=load();
@@ -520,7 +513,6 @@ function load(){
   let old=null; try{old=JSON.parse(localStorage.getItem(OLDKEY));}catch(e){}
   if(old&&Array.isArray(old.contacts)){
     const s=DEFAULT_SETTINGS();
-    if(Array.isArray(old.templates)&&old.templates.length) s.templates=old.templates;
     const customers=old.contacts.map((c,i)=>({
       id:i+1,name:c.name||"(no name)",phone:c.phone||"",email:c.email||"",
       street:"",city:"",state:"",zip:"",
@@ -534,16 +526,11 @@ function load(){
 }
 function normalize(r){
   if(!r.settings) r.settings=DEFAULT_SETTINGS();
+  if(r.settings)delete r.settings.templates; // templates were removed; drop any stored library
   const s=r.settings; const d=DEFAULT_SETTINGS();
   if(!s.business) s.business=d.business;
   if(!s.business.owner) s.business.owner=d.business.owner;
   if(!Array.isArray(s.services)||!s.services.length) s.services=d.services;
-  if(!Array.isArray(s.templates)||!s.templates.length) s.templates=d.templates;
-  // backfill: installed DBs pre-dating the review template don't rerun DEFAULT_TEMPLATES seeding
-  if(Array.isArray(s.templates)&&!s.templates.some(t=>t&&t.name&&t.name.indexOf("Review")===0)){
-    const rt=d.templates.find(t=>t.name.indexOf("Review")===0);
-    if(rt) s.templates.push(Object.assign({},rt));
-  }
   if(!Array.isArray(r.jobs)) r.jobs=[];
   r.jobs.forEach(j=>{j.termsAcceptedAt=+j.termsAcceptedAt||0;}); // backfill: pre-dates the confirm flow
   if(!r.seqC) r.seqC=Math.max(0,...r.customers.map(c=>c.id||0))+1;
@@ -956,7 +943,7 @@ function weekCard(j){
   const done=j.status==="completed";
   return `<div class="week-card${done?" done":""}" data-jobcard="${j.id}">
     ${j.time?`<div class="wt">${esc(fmtTime(j.time))}</div>`:""}
-    <div class="wn">${esc(c.name)}${!done&&j.termsAcceptedAt?" ✓":""}</div>
+    <div class="wn">${esc(c.name)}${j.termsAcceptedAt?`<span class="ck" title="Client confirmed">✓</span>`:""}</div>
     <div class="wp">${money2(j.price)}</div>
   </div>`;
 }
@@ -1177,8 +1164,6 @@ function renderSettings(){
          <div class="panel-pad" id="svc-list"></div></div>
      </div>
      <div class="col">
-       <div class="panel"><h2>💬 Text templates <span class="spacer"></span><button class="btn sm btn-primary" id="tpl-add">＋ New</button></h2>
-         <div class="panel-pad" id="tpl-list"></div></div>
        <div class="panel"><h2>🔄 Cloud sync (PC ⇄ phone)</h2><div class="panel-pad">
          <div class="note" style="margin-bottom:12px"><b>Status:</b> <span id="sync-state">…</span><br>
            Keeps your PC and phone on the same data automatically — every change uploads to a
@@ -1210,9 +1195,6 @@ function renderSettings(){
   // services
   renderSvcList();
   $("#svc-add").onclick=()=>{s.services.push({name:"New service",price:0});save();renderSvcList();};
-  // templates
-  renderTplList();
-  $("#tpl-add").onclick=()=>{s.templates.push({id:"t"+Date.now(),name:"New template",body:"Hi {firstname}, "});save();renderTplList();};
   // cloud sync
   $("#sync-key").value=syncToken();
   $("#sync-key").onchange=e=>{const v=e.target.value.trim();
@@ -1250,18 +1232,6 @@ function renderSvcList(){
   el.querySelectorAll("[data-svp]").forEach(i=>i.onchange=()=>{s.services[+i.dataset.svp].price=+i.value||0;save();});
   el.querySelectorAll("[data-svd]").forEach(b=>b.onclick=()=>{s.services.splice(+b.dataset.svd,1);save();renderSvcList();});
 }
-function renderTplList(){
-  const s=db.settings; const el=$("#tpl-list");
-  el.innerHTML=s.templates.map(t=>`<div class="tpl-row"><div style="flex:1">
-    <input data-tn="${t.id}" value="${esc(t.name)}" style="font-weight:700;border:1px solid var(--line);border-radius:8px;padding:6px 9px;width:100%;margin-bottom:6px">
-    <textarea data-tb="${t.id}" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 9px;min-height:60px;resize:vertical">${esc(t.body)}</textarea>
-  </div><button class="btn-ghost btn sm" data-td="${t.id}" title="Delete">🗑</button></div>`).join("")||`<div class="hint">No templates.</div>`;
-  el.querySelectorAll("[data-tn]").forEach(i=>i.onchange=()=>{s.templates.find(x=>x.id===i.dataset.tn).name=i.value;save();});
-  el.querySelectorAll("[data-tb]").forEach(i=>i.onchange=()=>{s.templates.find(x=>x.id===i.dataset.tb).body=i.value;save();});
-  el.querySelectorAll("[data-td]").forEach(b=>b.onclick=()=>{s.templates=s.templates.filter(x=>x.id!==b.dataset.td);save();renderTplList();});
-  el.insertAdjacentHTML("beforeend",`<div class="hint" style="margin-top:6px">Variables: <b>{firstname} {name} {service} {date} {time} {address} {balance} {price} {business}</b> — filled per customer/job.</div>`);
-}
-
 /* ---------------- Customer modal ---------------- */
 /* Call / Text / Confirm for whichever sheet is open. `job` may be null on the customer
    sheet, in which case Confirm targets their next booking — there is nothing to confirm
@@ -1411,6 +1381,10 @@ function openJob(id,focusPay,presetCust){
   const c=cid?custById(cid):null;
   $("#job-hsub").textContent=c?(c.name+(addrFull(c)?" · "+addrFull(c):"")):"";
   $("#job-delete").style.display=j?"inline-block":"none";
+  // A new job books. A saved one is marked done — or put back if it was marked by mistake.
+  const sv=$("#job-save");
+  sv.textContent = !j ? "Book" : (j.status==="completed" ? "↩ Not done" : "✓ Completed");
+  sv.className = "btn "+(j&&j.status==="completed" ? "btn" : "btn-primary");
   // Jobs written before the services list carry a single service+price; show that as one row.
   jobSvc = j ? (Array.isArray(j.services)&&j.services.length
                  ? j.services.map(s=>({name:s.name,price:+s.price||0}))
@@ -1547,27 +1521,41 @@ function gatherJob(){
     status:$("#jf-status").value,vehicle:$("#jf-vehicle").value.trim(),notes:$("#jf-notes").value.trim(),
     collected:+$("#jf-collected").value||0,payMethod:$("#jf-paymethod").value};
 }
-function saveJob(){
+function saveJob(keepOpen){
   const data=gatherJob();
-  if(!data.services.length){toast("Add at least one service","err");return;}
+  if(!data.services.length){toast("Add at least one service","err");return false;}
   if(jobCustMode==="new"){ // the client is being typed right here — create them, then book onto them
     const nm=($("#jf-newname").value||"").trim();
-    if(!nm){toast("Name the client","err");$("#jf-newname").focus();return;}
+    if(!nm){toast("Name the client","err");$("#jf-newname").focus();return false;}
     const c={id:db.seqC++,name:nm,phone:cleanNum($("#jf-newphone").value)||"",email:"",
       street:$("#jf-address").value.trim(),city:"",state:"",zip:"",status:"active",source:"",
       tags:[],access:"",notes:"",followup:"",log:[],created:Date.now()};
     db.customers.push(c); data.customerId=c.id;
   }
-  if(!data.customerId){toast("Pick a client for this job","err");const s=$("#jf-cust");if(s)s.focus();return;}
+  if(!data.customerId){toast("Pick a client for this job","err");const s=$("#jf-cust");if(s)s.focus();return false;}
   const cAddr=custById(data.customerId); // address box edits the customer's card (add / change / clear)
   if(cAddr){const a=$("#jf-address").value.trim();if(a!==(cAddr.street||""))cAddr.street=a;}
   let wasCompleted=false, j;
   if(editJob){j=db.jobs.find(x=>x.id===editJob);wasCompleted=j.status==="completed";Object.assign(j,data);}
   else{j=Object.assign({id:db.seqJ++,created:Date.now(),completedAt:0},data);db.jobs.push(j);}
   if(j.status==="completed"&&!j.completedAt)j.completedAt=Date.now();
-  save(); dismissJob();
+  save();
+  if(keepOpen){editJob=j.id;jobDirty=false;return true;} // caller is about to mark it done
+  dismissJob();
   if($("#cust-overlay").classList.contains("show")&&editCust)openCust(editCust);
-  render(); toast("Job saved","ok");
+  render(); toast("Booked","ok");
+  return true;
+}
+/* Undo a job marked done by mistake. The collected amount is cleared and the old figure
+   kept in the log, so the money trail still shows what was once recorded. */
+function uncompleteJob(id){
+  const j=db.jobs.find(x=>x.id===id); if(!j)return;
+  const had=+j.collected||0;
+  j.status="scheduled"; j.completedAt=0; j.collected=0;
+  const c=custById(j.customerId);
+  if(c){c.log=c.log||[];c.log.push({t:Date.now(),
+    m:"↩ Back to booked — Done undone"+(had?` (had ${money(had)} collected, now cleared)`:"")});}
+  save();render();toast("Back to booked","ok");
 }
 function completeJob(id){
   const j=db.jobs.find(x=>x.id===id);if(!j)return;
@@ -1581,15 +1569,29 @@ function completeJob(id){
   if(c){c.log=c.log||[];c.log.push({t:Date.now(),m:`✓ Completed ${j.service} (${money(j.price)})${jobBalance(j)>0?" — unpaid":""}`});}
   save();render();
   const doneMsg=jobBalance(j)>0?`Job done — ${money(jobBalance(j))} outstanding`:"Job done — paid ✓";
-  if(c&&c.phone) toastAction(doneMsg,"💬 Ask for a review",()=>openSms(c,j,"Review"));
+  if(c&&c.phone) toastAction(doneMsg,"💬 Ask for a review",()=>openSms(c,j,
+    `Hi ${firstName(c.name)}, thanks for having us today! If you're happy with how it turned out, `+
+    `a quick Google review would mean a lot. — ${db.settings.business.name||""}`));
   else toast(doneMsg,"ok");
 }
 function dismissJob(){$("#job-overlay").classList.remove("show");editJob=null;}
-function closeJob(){ // clicking out saves — but only if something was actually typed AND a customer exists
-  if(!$("#job-overlay").classList.contains("show"))return;
-  if(jobDirty&&(+$("#jf-cust").value))saveJob(); else dismissJob();
+/* Clicking out saves, but only when there is something worth saving. In new-client mode
+   there is no picker to read, so the test is "has a name been typed" instead. */
+function jobSheetHasClient(){
+  if(jobCustMode==="new")return !!($("#jf-newname")&&$("#jf-newname").value.trim());
+  const s=$("#jf-cust"); return !!(s&&+s.value);
 }
-$("#job-save").onclick=saveJob;
+function closeJob(){
+  if(!$("#job-overlay").classList.contains("show"))return;
+  if(jobDirty&&jobSheetHasClient()&&jobSvc.length)saveJob(); else dismissJob();
+}
+$("#job-save").onclick=()=>{
+  if(!editJob){saveJob();return;}                       // brand-new job: just book it
+  const j=db.jobs.find(x=>x.id===editJob); if(!j)return;
+  if(!saveJob(true))return;                             // persist what is on the sheet first
+  if(j.status==="completed")uncompleteJob(j.id); else completeJob(j.id);
+  dismissJob();
+};
 $("#job-cancel").onclick=dismissJob; // Cancel = explicit discard
 $("#job-close").onclick=closeJob;
 $("#job-delete").onclick=()=>{if(!editJob)return;if(!confirm("Delete this job? This can't be undone."))return;
@@ -1682,28 +1684,25 @@ function fillVars(text,c,j){
     .replace(/\{price\}/gi,j.price?money(j.price):"")
     .replace(/\{balance\}/gi,bal);
 }
-function templateOptions(){return `<option value="">— blank —</option>`+db.settings.templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");}
-function openSms(c,j,tplName){
+function openSms(c,j,preset){
   if(!c){toast("No customer to text","err");return;}
   smsCtx={c,j:j||null};
   $("#sms-title").textContent="Text "+c.name;
   $("#sms-to").value=c.phone||"";
-  $("#sms-template").innerHTML=templateOptions();
-  let def=db.settings.templates[0]; // start on the first template (the appointment reminder)
-  if(tplName){const m=db.settings.templates.find(t=>t.name&&t.name.toLowerCase().indexOf(tplName.toLowerCase())===0);if(m)def=m;}
-  $("#sms-template").value=def?def.id:"";
-  applySmsTpl();
-  $("#sms-vars").innerHTML=["{firstname}","{service}","{date}","{time}","{balance}"].map(v=>`<button class="chip" data-ins="${v}">${v}</button>`).join("");
+  $("#sms-body").value=preset||"";
+  // The chips used to paste {tokens} that applying a template expanded. Nothing expands them
+  // now, so each chip inserts the value itself — what you see is what gets sent.
+  const vars=[["Name","{firstname}"],["Service","{service}"],["Date","{date}"],["Time","{time}"],["Balance","{balance}"]]
+    .map(([label,tok])=>[label,fillVars(tok,c,j||null)]).filter(([,v])=>v&&String(v).trim());
+  $("#sms-vars").innerHTML=vars.map(([label,v])=>`<button class="chip" data-ins="${esc(v)}">${esc(label)}</button>`).join("");
   $("#sms-vars").querySelectorAll(".chip").forEach(b=>b.onclick=()=>insertAt($("#sms-body"),b.dataset.ins));
+  updateCounter();
   $("#sms-send").textContent="📱 Open in app";
   $("#sms-note").innerHTML=`Opens your messaging app with the text pre-filled — just press send.`;
   $("#sms-overlay").classList.add("show");
 }
-function applySmsTpl(){const t=db.settings.templates.find(x=>x.id===$("#sms-template").value);
-  $("#sms-body").value=t?fillVars(t.body,smsCtx.c,smsCtx.j):"";updateCounter();}
 function updateCounter(){const len=$("#sms-body").value.length,seg=Math.max(1,Math.ceil(len/160));
   $("#sms-counter").textContent=`${len} characters · ${seg} message${seg>1?"s":""}`;}
-$("#sms-template").onchange=applySmsTpl;
 $("#sms-body").addEventListener("input",updateCounter);
 function closeSms(){$("#sms-overlay").classList.remove("show");smsCtx=null;}
 $("#sms-cancel").onclick=closeSms;$("#sms-close").onclick=closeSms;
