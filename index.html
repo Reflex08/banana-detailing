@@ -529,7 +529,10 @@ function normalize(r){
   if(r.settings)delete r.settings.templates; // templates were removed; drop any stored library
   const s=r.settings; const d=DEFAULT_SETTINGS();
   if(!s.business) s.business=d.business;
-  if(!s.business.owner) s.business.owner=d.business.owner;
+  // Backfill every business field a stored db may pre-date. Missing `notify` was silently
+  // disabling the confirmation email: the link carried an empty address and the page skipped
+  // the send without complaining.
+  ["owner","notify","phone","email"].forEach(k=>{if(!s.business[k]&&d.business[k])s.business[k]=d.business[k];});
   if(!Array.isArray(s.services)||!s.services.length) s.services=d.services;
   if(!Array.isArray(r.jobs)) r.jobs=[];
   r.jobs.forEach(j=>{j.termsAcceptedAt=+j.termsAcceptedAt||0;}); // backfill: pre-dates the confirm flow
@@ -885,6 +888,28 @@ function openDay(iso){
   if(!iso||iso===schedDay)return;
   schedDay=iso; renderSchedule();
 }
+/* One tap selects the day, two books into it.
+   The columns bind click AND pointerup, because iOS drops one of them often enough to
+   matter — so a single physical tap arrives twice, microseconds apart. Anything inside
+   TAP_SAME is therefore the same tap and gets dropped; a second tap after that but within
+   TAP_DOUBLE is a real double. */
+const TAP_SAME=60, TAP_DOUBLE=450;
+let lastTap={iso:null,t:0};
+function tapDay(iso){
+  const now=Date.now();
+  if(lastTap.iso===iso){
+    const dt=now-lastTap.t;
+    if(dt<TAP_SAME)return;                                  // duplicate delivery of one tap
+    if(dt<TAP_DOUBLE){lastTap={iso:null,t:0};newJobOn(iso);return;}
+  }
+  lastTap={iso,t:now};
+  openDay(iso);
+}
+/* Double-tapping a day books into it: a new job, new client, that date already filled. */
+function newJobOn(iso){
+  schedDay=iso;
+  openJob(null,false,null,iso);
+}
 function renderSchedule(){
   if(!schedAnchor)schedAnchor=schedDay; // pin the strip's start once
   $("#content").innerHTML=schedHeader()+renderWeek();
@@ -900,10 +925,11 @@ function renderSchedule(){
   // Column tap opens that day. Job cards sit inside the columns, so their handler stops
   // propagation (see bindJobCards) — otherwise tapping a card would also switch the view.
   document.querySelectorAll("[data-wcol]").forEach(c=>{
-    const open=e=>{e.stopPropagation();openDay(c.dataset.wcol);};
+    const open=e=>{e.stopPropagation();tapDay(c.dataset.wcol);};
     c.onclick=open;
     c.onpointerup=open;              // iOS drops the synthetic click on a plain div often enough to matter
     c.onkeydown=e=>{if(e.key==="Enter"||e.key===" ")open(e);};
+    c.ondblclick=e=>{e.stopPropagation();newJobOn(c.dataset.wcol);}; // desktop, where dblclick is native
   });
   const ss=$("#sched-search"); if(ss) ss.onclick=()=>{view="customers";custSearchOpen=true;render();};
   bindJobCards();
@@ -1374,7 +1400,7 @@ const backdropTap=(e,ov)=>e.target===ov&&__pdBackdrop===ov;
 $("#cust-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#cust-overlay")))closeCust();});
 
 /* ---------------- Job modal ---------------- */
-function openJob(id,focusPay,presetCust){
+function openJob(id,focusPay,presetCust,presetDate){
   editJob=id; jobDirty=false; const j=id?db.jobs.find(x=>x.id===id):null;
   const cid=j?j.customerId:(presetCust||null);
   $("#job-title").textContent=j?"Edit Job":"New Job";
@@ -1392,7 +1418,7 @@ function openJob(id,focusPay,presetCust){
              : (db.settings.services[0]?[{name:db.settings.services[0].name,price:db.settings.services[0].price}]:[]);
   jobCustMode = (j||cid) ? "pick" : "new"; // only a cold "New job" starts by typing a client
   actionBar("#job-acts",c,j); // Confirm needs a saved job — unsaved ones have no id to report
-  $("#job-body").innerHTML=jobForm(j,cid);
+  $("#job-body").innerHTML=jobForm(j,cid,presetDate);
   bindJobForm(cid);
   $("#job-overlay").classList.add("show");
   setTimeout(()=>{if(focusPay){const p=$("#jf-collected");if(p){p.focus();p.select();}}else if(!j){const sel=$("#jf-cust");if(sel&&!cid)sel.focus();}},50);
@@ -1475,7 +1501,7 @@ function bindCustBlock(cid){
   const m=$("#jf-mode");
   if(m)m.onclick=()=>{jobCustMode=jobCustMode==="new"?"pick":"new";renderCustBlock(cid);};
 }
-function jobForm(j,cid){
+function jobForm(j,cid,presetDate){
   const statusOpts=JOB_STATUS.map(s=>`<option value="${s.id}" ${j&&j.status===s.id?"selected":""}>${s.label}</option>`).join("");
   const payOpts=`<option value="">— method —</option>`+PAY_METHODS.map(p=>`<option ${j&&j.payMethod===p?"selected":""}>${p}</option>`).join("");
   return `
@@ -1483,7 +1509,7 @@ function jobForm(j,cid){
     <div class="sec">🧰 Services</div>
     <div id="jf-svcbox">${svcLinesHTML()}</div>
     <div class="grid3">
-      <div class="field"><label>Date</label><input id="jf-date" type="date" value="${j?esc(j.date):today()}"></div>
+      <div class="field"><label>Date</label><input id="jf-date" type="date" value="${j?esc(j.date):esc(presetDate||today())}"></div>
       <div class="field"><label>Time</label><input id="jf-time" type="time" value="${j?esc(j.time||""):"09:00"}"></div>
       <div class="field"><label>Status</label><select id="jf-status">${statusOpts}</select></div>
     </div>

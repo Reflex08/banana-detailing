@@ -210,6 +210,18 @@ ok("a booked card keeps the confirmed tick", A.weekCard(undone).includes('class=
 A.__getDb().jobs[0].status = "completed";
 ok("a done card is green", A.weekCard(A.__getDb().jobs[0]).includes("week-card done"));
 
+/* ---------- settings backfill ----------
+   A db saved before a field existed must gain it, or features keyed off it fail silently. */
+const oldDb = A.normalize({ customers: [], jobs: [],
+  settings: { business: { name: "Banana Detailing" }, services: K.DEFAULT_SERVICES },
+  seqC: 1, seqJ: 1 });
+eq("an older db gains the confirmation email", oldDb.settings.business.notify, "koncurigor2008@gmail.com");
+eq("an older db gains the owner name", oldDb.settings.business.owner, "Igor");
+ok("a set confirmation email is never overwritten",
+   A.normalize({ customers: [], jobs: [],
+     settings: { business: { name: "X", notify: "someone@else.com" }, services: K.DEFAULT_SERVICES },
+     seqC: 1, seqJ: 1 }).settings.business.notify === "someone@else.com");
+
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
    K.KEY.startsWith("banana.") && !script.includes("servicepro"), K.KEY);

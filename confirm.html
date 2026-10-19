@@ -16,6 +16,10 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     padding:28px 16px 48px;display:flex;justify-content:center}
   .wrap{width:100%;max-width:440px}
+  .brand{text-align:center;margin-bottom:4px}
+  /* The mark carries the name, so the wordmark below it is only a fallback for when the
+     image cannot load (and for screen readers, via the alt text). */
+  .brand img{width:168px;max-width:62%;height:auto;display:inline-block}
   .word{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
     color:var(--brand);text-align:center}
   .greet{font-size:26px;font-weight:800;letter-spacing:-.3px;margin:18px 0 14px}
@@ -93,7 +97,8 @@ function render(){
     'Please ask for a fresh one.</div>';return;}
   var when=fmtDate(d.dt),time=fmtTime(d.t),phone=fmtPhone(d.ph);
   app.innerHTML=
-    '<div class="word">'+esc(d.b)+'</div>'+
+    '<div class="brand"><img id="logo" src="logo.png" alt="'+esc(d.b)+'"></div>'+
+    '<div class="word" id="wm" style="display:none">'+esc(d.b)+'</div>'+
     '<div class="greet">Hi '+esc(d.n)+',</div>'+
     '<div class="card">'+
       '<div class="svc">'+esc(d.s)+'</div>'+
@@ -111,6 +116,9 @@ function render(){
     '<div id="cta"><button class="cta" id="go" disabled>Confirm appointment</button></div>'+
     (d.ph?'<div class="call">Prefer to call? <a href="tel:'+esc(digits(d.ph))+'">'+esc(phone)+'</a></div>':'');
 
+  // If the mark cannot load, fall back to the plain wordmark rather than a broken image.
+  var logo=document.getElementById("logo");
+  if(logo)logo.onerror=function(){logo.style.display="none";document.getElementById("wm").style.display="block";};
   var chk=document.getElementById("chk"),rev=document.getElementById("rev"),go=document.getElementById("go");
   chk.onchange=function(){go.disabled=!chk.checked;};
   rev.onclick=function(e){e.preventDefault();
