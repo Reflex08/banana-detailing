@@ -37,6 +37,7 @@ const shim = script + `
 ;globalThis.__setSvc = v => { jobSvc = v; };
 ;globalThis.__getDb = () => db;
 ;globalThis.CAR_MAKES = CAR_MAKES;
+;globalThis.CAR_MODELS = CAR_MODELS;
 `;
 
 // Minimal DOM: every lookup returns an inert node, so render paths run without throwing.
@@ -210,8 +211,26 @@ ok("CAR_MAKES is loaded", Array.isArray(A.CAR_MAKES) && A.CAR_MAKES.length > 30)
 ok("Mercedes-Benz is reachable by prefix", A.CAR_MAKES.some(m => m.toLowerCase().startsWith("merc")));
 ok("Mercedes-Benz is reachable by the part people actually say",
    A.CAR_MAKES.some(m => m.toLowerCase().includes("benz")));
+ok("every make has a model list",
+   A.CAR_MAKES.every(m => Array.isArray(A.CAR_MODELS[m]) && A.CAR_MODELS[m].length),
+   A.CAR_MAKES.filter(m => !(A.CAR_MODELS[m] || []).length).join(", "));
+ok("Mercedes-Benz carries its classes",
+   ["A-Class","C-Class","E-Class","S-Class","GLC","GLE","AMG GT"].every(m => A.CAR_MODELS["Mercedes-Benz"].includes(m)));
+// Lucid and Rivian really do sell two models each, so two is the floor, not a stub.
+ok("no model list is a stub", Object.values(A.CAR_MODELS).every(v => v.length >= 2));
 ok("the common makes are present",
    ["Toyota","Honda","Ford","BMW","Audi","Tesla","Volkswagen","Mazda"].every(m => A.CAR_MAKES.includes(m)));
+
+/* ---------- cancellation fee ---------- */
+eq("the fee defaults to 20%", K.DEFAULT_SETTINGS().business.cancelFeePct, 20);
+eq("a stored 50% is moved to 20 once",
+   A.normalize({ customers: [], jobs: [],
+     settings: { business: { name: "X", cancelFeePct: 50 }, services: K.DEFAULT_SERVICES },
+     seqC: 1, seqJ: 1 }).settings.business.cancelFeePct, 20);
+eq("a fee the owner chose is left alone",
+   A.normalize({ customers: [], jobs: [], feeTo20: true,
+     settings: { business: { name: "X", cancelFeePct: 35 }, services: K.DEFAULT_SERVICES },
+     seqC: 1, seqJ: 1 }).settings.business.cancelFeePct, 35);
 
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
