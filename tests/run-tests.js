@@ -32,10 +32,11 @@ const script = html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</scri
    `var` do, and the module's own `db` binding is likewise unreachable from outside. This
    snippet runs in the same scope and hands both out. */
 const shim = script + `
-;globalThis.__k = {DEFAULT_SERVICES,DEFAULT_SETTINGS,QA_SERVICES,GOAL,KEY,OLDKEY,RELAY};
+;globalThis.__k = {DEFAULT_SERVICES,DEFAULT_SETTINGS,GOAL,KEY,OLDKEY,RELAY};
 ;globalThis.__setDb = v => { db = v; };
 ;globalThis.__setSvc = v => { jobSvc = v; };
 ;globalThis.__getDb = () => db;
+;globalThis.CAR_MAKES = CAR_MAKES;
 `;
 
 // Minimal DOM: every lookup returns an inert node, so render paths run without throwing.
@@ -124,24 +125,6 @@ ok("services are detailing, not window cleaning",
 ok("every service has a price", K.DEFAULT_SERVICES.every(s => +s.price > 0));
 eq("monthly goal is $5,000", K.GOAL, 5000);
 
-/* ---------- quick add ----------
-   These are the regressions worth pinning: "interior"/"exterior" used to be eaten as notes
-   before the service matcher saw them, and "washed" collided with Express Wash & Wax. */
-const qa = line => A.quickParseLine(line);
-eq("quick add: interior resolves to Interior Detail",
-   qa("Dana tomorrow at 2 for 150 interior").items[0].service, "Interior Detail");
-eq("quick add: exterior resolves to Exterior Detail",
-   qa("Dana tomorrow at 2 for 140 exterior").items[0].service, "Exterior Detail");
-eq("quick add: 'full detail' beats the bare 'detail' catch-all",
-   qa("Marcus friday 250 full detail").items[0].service, "Full Detail (In & Out)");
-eq("quick add: wash maps to Express Wash & Wax",
-   qa("Tyler monday 60 wash").items[0].service, "Express Wash & Wax");
-eq("quick add: ceramic maps to Ceramic Coating",
-   qa("Dana 650 ceramic").items[0].service, "Ceramic Coating");
-eq("quick add: price is picked up", qa("Marcus friday 250 full detail").items[0].price, 250);
-ok("quick add: a bare name with no price stays a lead", !qa("Marcus 416 555 0100").job);
-ok("quick add: an empty line parses to nothing", qa("   ") === null);
-
 /* ---------- seed + sample wipe ---------- */
 const seeded = A.seed();
 ok("seed ships sample customers", seeded.customers.length > 0);
@@ -222,6 +205,14 @@ ok("a set confirmation email is never overwritten",
      settings: { business: { name: "X", notify: "someone@else.com" }, services: K.DEFAULT_SERVICES },
      seqC: 1, seqJ: 1 }).settings.business.notify === "someone@else.com");
 
+/* ---------- car make suggestions ---------- */
+ok("CAR_MAKES is loaded", Array.isArray(A.CAR_MAKES) && A.CAR_MAKES.length > 30);
+ok("Mercedes-Benz is reachable by prefix", A.CAR_MAKES.some(m => m.toLowerCase().startsWith("merc")));
+ok("Mercedes-Benz is reachable by the part people actually say",
+   A.CAR_MAKES.some(m => m.toLowerCase().includes("benz")));
+ok("the common makes are present",
+   ["Toyota","Honda","Ford","BMW","Audi","Tesla","Volkswagen","Mazda"].every(m => A.CAR_MAKES.includes(m)));
+
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
    K.KEY.startsWith("banana.") && !script.includes("servicepro"), K.KEY);
@@ -241,6 +232,11 @@ for (const [name, token] of [
   ["the half-typed job draft detour is gone", "restoreJobDraft"],
   ["text templates are gone", "DEFAULT_TEMPLATES"],
   ["the template picker is gone", "applySmsTpl"],
+  ["quick add is gone", "quickParseLine"],
+  ["the quick-add keyword map is gone", "QA_SERVICES"],
+  ["the status dropdown is gone", "jf-status"],
+  ["the pay method field is gone", "jf-paymethod"],
+  ["the collected field is gone", "jf-collected"],
 ]) ok(name, !script.includes(token));
 ok("no real phone numbers are baked into the app",
    !/\+1(?!555)\d{10}/.test(script));

@@ -1,0 +1,135 @@
+
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+/* Everything this page shows arrives in the ?d= parameter, base64url-encoded by the CRM.
+   No server, no database — the link IS the record. */
+/* Service terms. Modelled on what detailing agreements and liability waivers actually
+   carry: scope, access and utilities, personal property, pre-existing condition, extra
+   work, achievable results, a liability cap, weather, cancellation, payment and photo
+   consent. Each entry is [lead-in, text]. Plain language on purpose — a client reading
+   this on a phone should understand what they are agreeing to. */
+var TERMS=[
+ ["Scope","The price covers the services listed above for the vehicle named above, quoted on the condition described at booking. Anything beyond that is a separate job."],
+ ["Access","Please have the vehicle available at the agreed time and place, parked somewhere safe and legal with room to work around it. For mobile visits we may need access to water and an outdoor outlet — tell us in advance if neither is available."],
+ ["Personal belongings","Please empty the vehicle before we arrive, including the glovebox, boot and door pockets. We are not responsible for cash, electronics, documents or other items left inside."],
+ ["Condition on arrival","Tell us about any existing damage before we start. Chips, scratches, swirls, dents, cracked or brittle trim, failing clear coat, worn or torn upholstery, water leaks and existing odours are not our responsibility. Cleaning removes the dirt that hides such defects, so they are often more visible afterwards."],
+ ["Extra work","Heavy soiling, pet hair, smoke, mould, spills or biohazard contamination, deep stains and paint correction beyond the booked service take extra time. We will quote any extra before starting it — you are never charged for work you did not agree to."],
+ ["What detailing can and cannot do","Work is carried out to the best achievable standard for the vehicle's condition. Some stains, water spotting and etching, swirl marks, sun damage and set-in odours cannot be fully removed, and no result is guaranteed."],
+ ["Mechanical and electrical","We do not service mechanical or electrical components. We are not liable for faults that appear during or after a detail — including sensors, cameras, aftermarket fittings, loose or previously repaired trim, or water entering through perished seals, worn weatherstripping or an open window."],
+ ["Our liability","If we damage your vehicle through our own negligence, tell us before we leave or within 24 hours so we can inspect it. Our liability is limited to repairing that damage or refunding the price of the service, whichever is lower."],
+ ["Weather and safety","Outdoor work depends on the weather. We may reschedule for rain, snow, extreme heat or cold, or if the location is unsafe, unlawful to work in, or too tight to work around. Rescheduling for weather is always free."],
+ ["Changes and cancellation","Rescheduling or cancelling is free with at least 24 hours' notice. Inside 24 hours, or if nobody is there and the vehicle cannot be accessed, up to 50% of the booked price may be charged."],
+ ["Running late","We will message you if we are delayed. If you are running late, please tell us — we can usually wait about 15 minutes before the appointment has to move."],
+ ["Payment","Payment is due when the detail is finished, unless agreed otherwise in writing."],
+ ["Photographs","We may photograph the vehicle before and after as a record of its condition and to show our work. Number plates are never shown. Tell us if you would rather we did not, and we will not."],
+ ["This agreement","Confirming above records your acceptance of these terms for this appointment, with the date and time of your confirmation."]
+];
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(m){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];});}
+function digits(p){return String(p||"").replace(/[^\d]/g,"");}
+function fmtPhone(p){var d=digits(p);if(d.length===11&&d[0]==="1")d=d.slice(1);
+  return d.length===10?"("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6):String(p||"");}
+function fmtTime(t){if(!t)return"";var a=t.split(":"),h=+a[0],m=a[1]||"00";
+  var ap=h>=12?"PM":"AM";h=((h+11)%12)+1;return h+":"+m+" "+ap;}
+function fmtDate(iso){if(!iso)return"";var d=new Date(iso+"T12:00:00");
+  if(isNaN(d))return iso;
+  return d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});}
+function fmtMoney(p){return "$"+(+p||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function parseData(){
+  try{
+    var q=new URLSearchParams(location.search).get("d");
+    if(!q)return null;
+    var b=q.replace(/-/g,"+").replace(/_/g,"/");
+    while(b.length%4)b+="=";
+    var o=JSON.parse(decodeURIComponent(escape(atob(b))));
+    return o&&o.s?o:null;
+  }catch(e){return null;}
+}
+function render(){
+  var d=parseData(),app=document.getElementById("app");
+  if(!d){app.innerHTML='<div class="err">This confirmation link is incomplete or has expired.<br>'+
+    'Please ask for a fresh one.</div>';return;}
+  var when=fmtDate(d.dt),time=fmtTime(d.t),phone=fmtPhone(d.ph);
+  app.innerHTML=
+    '<div class="brand"><img id="logo" src="logo.png" alt="'+esc(d.b)+'"></div>'+
+    '<div class="word" id="wm" style="display:none">'+esc(d.b)+'</div>'+
+    '<div class="greet">Hi '+esc(d.n)+',</div>'+
+    '<div class="card">'+
+      '<div class="svc">'+esc(d.s)+'</div>'+
+      (d.v?'<div class="veh">'+esc(d.v)+'</div>':'')+
+      '<div class="when">'+esc(when)+(time?' &middot; '+esc(time):'')+'</div>'+
+      (d.a?'<div class="addr">'+esc(d.a)+'</div>':'')+
+      '<div class="price">'+esc(fmtMoney(d.p))+' <small>due on completion</small></div>'+
+      '<div class="tc-row"><input type="checkbox" id="chk" aria-label="Accept the terms">'+
+        '<div><div class="tc-main">I confirm this appointment and accept the terms</div>'+
+        '<div class="tc-hint"><a id="rev">Tap to review</a></div></div></div>'+
+      '<div class="terms" id="terms"><h2>Terms</h2><ol>'+
+        TERMS.map(function(t){return '<li><b>'+esc(t[0])+'.</b> '+esc(t[1])+'</li>';}).join('')+
+      '</ol></div>'+
+    '</div>'+
+    '<div id="cta"><button class="cta" id="go" disabled>Confirm appointment</button></div>'+
+    (d.ph?'<div class="call">Prefer to call? <a href="tel:'+esc(digits(d.ph))+'">'+esc(phone)+'</a></div>':'');
+
+  // If the mark cannot load, fall back to the plain wordmark rather than a broken image.
+  var logo=document.getElementById("logo");
+  if(logo)logo.onerror=function(){logo.style.display="none";document.getElementById("wm").style.display="block";};
+  var chk=document.getElementById("chk"),rev=document.getElementById("rev"),go=document.getElementById("go");
+  chk.onchange=function(){go.disabled=!chk.checked;};
+  rev.onclick=function(e){e.preventDefault();
+    var t=document.getElementById("terms");t.classList.toggle("open");
+    rev.textContent=t.classList.contains("open")?"Hide":"Tap to review";};
+
+  go.onclick=function(){
+    if(!chk.checked)return;
+    var msg="CONFIRMED ✓ — "+d.n+", "+d.s+(d.v?" ("+d.v+")":"")+" on "+when+
+      (time?", "+time:"")+" for "+fmtMoney(d.p)+". I accept the terms.";
+    var sms="sms:"+digits(d.ph)+"?&body="+encodeURIComponent(msg);
+    document.getElementById("cta").innerHTML=
+      '<div class="done"><div class="ck">&#10003;</div>'+
+      '<div class="headline">Confirmed &mdash; thank you!</div>'+
+      '<div class="note">Your messages app is opening. Press send &mdash; that text is your receipt.</div>'+
+      '<div class="msgbox">'+esc(msg)+'</div>'+
+      '<div class="note">Didn\'t open? Text it to <b>'+esc(phone)+'</b>:</div>'+
+      '<a class="cta" href="'+esc(sms)+'" style="display:block;text-align:center;text-decoration:none">Text '+esc(phone)+'</a>'+
+      '<button class="cta ghost" id="cp">Copy message</button></div>';
+    var cp=document.getElementById("cp");
+    cp.onclick=function(){
+      var ok=function(){cp.textContent="Copied ✓";};
+      if(navigator.clipboard&&navigator.clipboard.writeText)
+        navigator.clipboard.writeText(msg).then(ok,function(){prompt("Copy this message:",msg);});
+      else prompt("Copy this message:",msg);
+    };
+    // Tell the CRM directly so the booking ticks itself; the app polls this every minute.
+    if(d.r&&d.j&&d.j.length){
+      try{
+        fetch(d.r+"/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({jobIds:d.j,cid:d.c,name:d.n})}).catch(function(){});
+      }catch(e){}
+    }
+    // Written proof emailed to the business the moment they agree. Fire-and-forget — the SMS
+    // receipt above is the fallback if this fails or was never activated.
+    if(d.e){
+      try{
+        fetch("https://formsubmit.co/ajax/"+encodeURIComponent(d.e),{method:"POST",
+          headers:{"Content-Type":"application/json","Accept":"application/json"},
+          body:JSON.stringify({
+            _subject:"CONFIRMED — "+d.n+" ("+d.s+", "+when+")",
+            _template:"table",
+            client:d.n, service:d.s, vehicle:d.v||"—",
+            date:when, time:time||"anytime", address:d.a||"—",
+            price:fmtMoney(d.p),
+            agreed:"Yes — confirmed the appointment and accepted the terms",
+            agreed_at:new Date().toString(),
+            terms_shown:TERMS.map(function(x){return x[0]+": "+x[1];}).join("\n\n")
+          })}).catch(function(){});
+      }catch(e){}
+    }
+    location.href=sms;
+  };
+}
+render();
+</script>
+</body>
+</html>

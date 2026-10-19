@@ -79,8 +79,6 @@
   .drawer.open{transform:none}
   .drawer-veil{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:55;display:none}
   .drawer-veil.show{display:block}
-  .drawer-actions{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
-  .drawer-actions .btn{width:100%;justify-content:center}
   .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;
     border:0;background:#7cc4fa;color:#06283d;font-size:26px;display:inline-flex;align-items:center;justify-content:center;
     z-index:44;box-shadow:var(--shadow-lg)}
@@ -243,7 +241,7 @@
   .overlay{position:fixed;inset:0;background:rgba(2,8,16,.65);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:34px 16px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .overlay.show{display:flex}
   body:has(.overlay.show){overflow:hidden} /* page behind a modal must not scroll */
-  #cust-overlay{z-index:50} #job-overlay{z-index:60} #sms-overlay,#bulk-overlay,#paste-overlay,#qa-overlay{z-index:70}
+  #cust-overlay{z-index:50} #job-overlay{z-index:60} #sms-overlay,#bulk-overlay,#paste-overlay{z-index:70}
   .modal{background:#15161c;border:1px solid var(--line);border-radius:20px;width:100%;max-width:640px;box-shadow:var(--shadow-lg);margin:auto 0}
   .modal.lg{max-width:760px} .modal.sm{max-width:520px}
   .modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -263,6 +261,13 @@
     align-items:center;justify-content:center;line-height:1;font-size:15px}
   .svc-total{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0 2px;font-weight:800}
   .svc-total .t{font-size:19px}
+  /* Make suggestions under the Vehicle box. */
+  .ac{position:relative}
+  .ac-list{position:absolute;left:0;right:0;top:4px;z-index:5;background:#15161c;border:1px solid var(--line);
+    border-radius:11px;box-shadow:var(--shadow-lg);overflow:hidden;max-height:236px;overflow-y:auto}
+  .ac-item{display:block;width:100%;text-align:left;border:0;background:none;color:var(--ink);
+    font-family:inherit;font-size:14px;font-weight:600;padding:10px 13px;cursor:pointer}
+  .ac-item:hover,.ac-item.on{background:var(--brand-soft);color:var(--brand)}
   .modal-head .hsub{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:2px}
   .x{border:0;background:transparent;font-size:24px;color:var(--faint);line-height:1;padding:2px 7px;border-radius:8px}
   .x:hover{background:var(--hover);color:var(--ink)}
@@ -286,7 +291,6 @@
   .chip{background:var(--brand-soft);color:var(--brand);border:0;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:700}
   .chip:hover{background:rgba(86,184,245,.25)}
 
-  /* quote sheet */
   /* Schedule "7 days" — ported from Flyra. Horizontal strip of day columns;
      minmax(132px,1fr) keeps columns readable on a phone and lets the wrap scroll. */
   .week-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0 4px}
@@ -378,10 +382,6 @@
     <a data-view="customers"><span class="ic">👥</span> Leads <span class="count" id="c-cust">0</span></a>
     <a data-view="settings"><span class="ic">⚙️</span> Settings</a>
   </nav>
-  <div class="drawer-actions">
-    <button class="btn" id="quick-add" title="Say what happened — clients & jobs fill themselves out">✨ Quick add</button>
-    <button class="btn btn-primary" id="add-job">＋ New Job</button>
-  </div>
   <div class="helper-status" id="backup-chip" title="Automatic backup status"><span class="led"></span><span id="backup-text">Auto-backup: off</span></div>
   <div class="helper-status" id="sync-chip" title="Cloud sync between your PC and phone"><span class="led"></span><span id="sync-text">Cloud sync: off</span></div>
 </aside>
@@ -445,23 +445,6 @@
   <div class="modal-foot"><button class="btn" id="paste-cancel">Cancel</button><button class="btn btn-primary" id="paste-import">Import all</button></div>
 </div></div>
 
-<!-- Quick add modal (✨ text → leads) -->
-<div class="overlay" id="qa-overlay"><div class="modal">
-  <div class="modal-head"><div><h3>✨ Quick add</h3><div class="hsub">Type it like a text message — clients &amp; jobs fill themselves out</div></div><button class="x" id="qa-close">&times;</button></div>
-  <div class="modal-body">
-    <div class="field"><label>One client or job per line — say it like you'd text a friend</label>
-      <textarea id="qa-text" style="min-height:88px"></textarea>
-      <div class="hint">Knows: today / tomorrow / weekdays / June 5 · "at 12" · "for 249" · full detail, interior, ceramic, wax… Past date = done &amp; paid, future = booked.</div></div>
-    <div class="field"><label>Add as</label><div class="seg" id="qa-status">
-      <button data-qs="lead" class="active">🌱 Lead</button><button data-qs="active">✅ Active client</button></div></div>
-    <div id="qa-preview"></div>
-    <div class="note" id="qa-note" style="display:none;margin-top:10px"></div>
-  </div>
-  <div class="modal-foot">
-    <button class="btn" id="qa-cancel">Cancel</button>
-    <button class="btn btn-primary" id="qa-add" disabled>Add</button>
-  </div>
-</div></div>
 <!-- Quote / Accept & Sign sheet -->
 
 <input type="file" id="file-json" accept=".json" style="display:none">
@@ -1421,7 +1404,7 @@ function openJob(id,focusPay,presetCust,presetDate){
   $("#job-body").innerHTML=jobForm(j,cid,presetDate);
   bindJobForm(cid);
   $("#job-overlay").classList.add("show");
-  setTimeout(()=>{if(focusPay){const p=$("#jf-collected");if(p){p.focus();p.select();}}else if(!j){const sel=$("#jf-cust");if(sel&&!cid)sel.focus();}},50);
+  setTimeout(()=>{if(!j){const sel=$("#jf-cust");if(sel&&!cid)sel.focus();}},50);
 }
 /* Repeat customers arrive in the same car, so a new job starts with whatever vehicle they
    were last seen in. Only a default — it is a plain field and overtypes freely. */
@@ -1452,14 +1435,13 @@ function svcLinesHTML(){
     (jobSvc.length?`<div class="svc-total"><span>Total</span><span class="t">${money2(total)}</span></div>`:
       `<div class="hint">Add at least one service.</div>`);
 }
-function repaintSvc(){const b=$("#jf-svcbox"); if(!b)return; b.innerHTML=svcLinesHTML(); bindSvc(); updateBalHint();}
+function repaintSvc(){const b=$("#jf-svcbox"); if(!b)return; b.innerHTML=svcLinesHTML(); bindSvc();}
 function bindSvc(){
   document.querySelectorAll("[data-svcp]").forEach(i=>i.oninput=()=>{
     jobSvc[+i.dataset.svcp].price=+i.value||0;
     const t=$("#jf-svcbox").querySelector(".svc-total .t");
     if(t)t.textContent=money2(jobSvc.reduce((s,x)=>s+(+x.price||0),0));
-    updateBalHint();
-  });
+      });
   document.querySelectorAll("[data-svcx]").forEach(b=>b.onclick=()=>{jobSvc.splice(+b.dataset.svcx,1);repaintSvc();});
   const add=$("#jf-addsvc");
   if(add)add.onchange=()=>{
@@ -1502,50 +1484,85 @@ function bindCustBlock(cid){
   if(m)m.onclick=()=>{jobCustMode=jobCustMode==="new"?"pick":"new";renderCustBlock(cid);};
 }
 function jobForm(j,cid,presetDate){
-  const statusOpts=JOB_STATUS.map(s=>`<option value="${s.id}" ${j&&j.status===s.id?"selected":""}>${s.label}</option>`).join("");
-  const payOpts=`<option value="">— method —</option>`+PAY_METHODS.map(p=>`<option ${j&&j.payMethod===p?"selected":""}>${p}</option>`).join("");
   return `
     <div id="jf-custbox">${custBlockHTML(cid)}</div>
     <div class="sec">🧰 Services</div>
     <div id="jf-svcbox">${svcLinesHTML()}</div>
-    <div class="grid3">
+    <div class="grid2">
       <div class="field"><label>Date</label><input id="jf-date" type="date" value="${j?esc(j.date):esc(presetDate||today())}"></div>
       <div class="field"><label>Time</label><input id="jf-time" type="time" value="${j?esc(j.time||""):"09:00"}"></div>
-      <div class="field"><label>Status</label><select id="jf-status">${statusOpts}</select></div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>🚗 Vehicle</label><input id="jf-vehicle" placeholder="2019 Honda Civic — black" value="${esc(j?(j.vehicle||""):lastVehicle(cid))}"></div>
-      <div class="field"><label>Pay method</label><select id="jf-paymethod">${payOpts}</select></div>
-    </div>
-    <div class="field"><label>Job notes</label><textarea id="jf-notes">${j?esc(j.notes||""):""}</textarea></div>
-    <div class="sec">💵 Payment</div>
-    <div class="grid2">
-      <div class="field pre"><label>Collected</label><span class="sym" style="top:33px">$</span><input id="jf-collected" type="number" min="0" step="1" value="${j?(j.collected||""):""}"></div>
-      <div class="field"><label>&nbsp;</label><button class="btn" id="jf-payfull" style="width:100%">Mark paid in full</button></div>
-    </div>
-    <div id="jf-balhint" class="hint"></div>`;
+    <div class="field"><label>🚗 Vehicle</label>
+      <input id="jf-vehicle" autocomplete="off" value="${esc(j?(j.vehicle||""):lastVehicle(cid))}">
+      <div class="ac" id="jf-make-ac"></div></div>
+    <div class="field"><label>Job notes</label><textarea id="jf-notes">${j?esc(j.notes||""):""}</textarea></div>`;
 }
 function bindJobForm(cid){
-  bindCustBlock(cid); bindSvc();
-  $("#jf-payfull").onclick=()=>{$("#jf-collected").value=jobTotal();updateBalHint();};
-  $("#jf-collected").addEventListener("input",updateBalHint);
-  updateBalHint();
+  bindCustBlock(cid); bindSvc(); bindMakeSuggest();
 }
 function jobTotal(){return jobSvc.reduce((t,s)=>t+(+s.price||0),0);}
-function updateBalHint(){const p=jobTotal(),c=+$("#jf-collected").value||0;const bal=Math.max(0,p-c);
-  const el=$("#jf-balhint");if(!el)return;
-  el.innerHTML = p<=0?"" : bal>0?`Balance remaining: <b style="color:var(--red)">${money(bal)}</b>` : `<b style="color:var(--green)">Paid in full ✓</b>`;
+/* Car makes, for the suggestion list on the Vehicle field. Covers what actually turns up
+   on a driveway rather than every marque that has ever existed. */
+const CAR_MAKES=["Acura","Alfa Romeo","Aston Martin","Audi","Bentley","BMW","Buick","Cadillac",
+ "Chevrolet","Chrysler","Dodge","Ferrari","Fiat","Ford","Genesis","GMC","Honda","Hyundai",
+ "Infiniti","Jaguar","Jeep","Kia","Lamborghini","Land Rover","Lexus","Lincoln","Lucid","Maserati",
+ "Mazda","McLaren","Mercedes-Benz","MINI","Mitsubishi","Nissan","Polestar","Porsche","Ram",
+ "Rivian","Rolls-Royce","Subaru","Tesla","Toyota","Volkswagen","Volvo"];
+/* Suggests a make from the word being typed. The field stays free text — a year and model
+   belong in it too — so this only ever replaces the word under the cursor. */
+function bindMakeSuggest(){
+  const inp=$("#jf-vehicle"), box=$("#jf-make-ac");
+  if(!inp||!box)return;
+  let hits=[],at=-1;
+  const close=()=>{box.innerHTML="";hits=[];at=-1;};
+  const lastWord=()=>{
+    const m=inp.value.match(/([A-Za-z-]+)\s*$/);   // the word still being typed
+    return m?m[1]:"";
+  };
+  const paint=()=>{
+    if(!hits.length){close();return;}
+    box.innerHTML=`<div class="ac-list">`+hits.map((m,i)=>
+      `<button type="button" class="ac-item${i===at?" on":""}" data-make="${esc(m)}">${esc(m)}</button>`).join("")+`</div>`;
+    box.querySelectorAll("[data-make]").forEach(b=>b.onmousedown=e=>{e.preventDefault();pick(b.dataset.make);});
+  };
+  const pick=make=>{
+    const w=lastWord();
+    inp.value = w ? inp.value.slice(0,inp.value.length-w.length)+make+" " : inp.value+make+" ";
+    close(); inp.focus(); jobDirty=true;
+  };
+  inp.addEventListener("input",()=>{
+    const w=lastWord();
+    if(w.length<2){close();return;}
+    const q=w.toLowerCase();
+    // starts-with first, then anywhere — "benz" should still reach Mercedes-Benz
+    const starts=CAR_MAKES.filter(m=>m.toLowerCase().startsWith(q));
+    const inside=CAR_MAKES.filter(m=>!m.toLowerCase().startsWith(q)&&m.toLowerCase().includes(q));
+    hits=starts.concat(inside).slice(0,6);
+    if(hits.length===1&&hits[0].toLowerCase()===q)hits=[]; // already typed in full
+    at=-1; paint();
+  });
+  inp.addEventListener("keydown",e=>{
+    if(!hits.length)return;
+    if(e.key==="ArrowDown"){e.preventDefault();at=(at+1)%hits.length;paint();}
+    else if(e.key==="ArrowUp"){e.preventDefault();at=(at-1+hits.length)%hits.length;paint();}
+    else if(e.key==="Enter"&&at>=0){e.preventDefault();pick(hits[at]);}
+    else if(e.key==="Escape")close();
+  });
+  inp.addEventListener("blur",()=>setTimeout(close,120)); // let a tap on the list land first
 }
 /* services is the truth; service and price are the joined name and the total, kept in step
    so every reader downstream (cards, revenue, CSV, the confirm link) needs no changes. */
 function gatherJob(){
+  const prev=editJob?db.jobs.find(x=>x.id===editJob):null;
   const services=jobSvc.map(s=>({name:s.name,price:+s.price||0}));
   const sel=$("#jf-cust");
   return {customerId:sel?(+sel.value||null):null,
     services, service:services.map(s=>s.name).join(" + "), price:jobTotal(),
     date:$("#jf-date").value||today(),time:$("#jf-time").value||"",recurring:"none",
-    status:$("#jf-status").value,vehicle:$("#jf-vehicle").value.trim(),notes:$("#jf-notes").value.trim(),
-    collected:+$("#jf-collected").value||0,payMethod:$("#jf-paymethod").value};
+    // Status and money are not on the sheet any more: a new job is booked, an existing one
+    // keeps whatever Completed / Not done last set, and completeJob settles the payment.
+    status:prev?prev.status:"scheduled",vehicle:$("#jf-vehicle").value.trim(),notes:$("#jf-notes").value.trim(),
+    collected:prev?(+prev.collected||0):0,payMethod:prev?(prev.payMethod||""):""};
 }
 function saveJob(keepOpen){
   const data=gatherJob();
@@ -1750,11 +1767,10 @@ function drawer(open){$("#drawer").classList.toggle("open",open);$("#drawer-veil
 document.querySelectorAll("#nav a").forEach(a=>a.onclick=()=>{view=a.dataset.view;render();drawer(false);});
 $("#menu-btn").onclick=()=>drawer(!$("#drawer").classList.contains("open"));
 $("#drawer-veil").onclick=()=>drawer(false);
-$("#add-job").onclick=()=>openJob(null);
 $("#fab-add").onclick=()=>openJob(null);
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"&&$("#drawer").classList.contains("open")){drawer(false);return;}
-  if(e.key==="Escape"){closePaste();closeSms();closeJob();closeCust();closeQuick();return;}
+  if(e.key==="Escape"){closePaste();closeSms();closeJob();closeCust();return;}
   // Ctrl/⌘+Enter saves whichever editor is open — job takes priority since it can stack over the customer modal
   if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){
     if($("#job-overlay").classList.contains("show")){e.preventDefault();saveJob();}
@@ -2055,163 +2071,6 @@ $("#paste-close").onclick=closePaste;$("#paste-cancel").onclick=closePaste;
 $("#paste-import").onclick=doPasteImport;
 $("#paste-text").addEventListener("input",pastePreview);
 $("#paste-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#paste-overlay")))closePaste();});
-
-/* ---------------- Quick add (✨ text → leads) ---------------- */
-/* Free local parser — plain speech in, structured client + job out. No AI needed.
-   "Judy today at 12 for 249 full detail" => Judy, Full Detail (In & Out), today 12:00, $249, done & paid.
-   "ina, 647 570 4675 15 codsell 149$"          => lead with phone/address and a quoted price. */
-const QA_SERVICES=[["full detail","Full Detail (In & Out)"],["interior","Interior Detail"],
-  ["exterior","Exterior Detail"],["paint correction","Paint Correction (1-Step)"],["polish","Paint Correction (1-Step)"],
-  ["buff","Paint Correction (1-Step)"],["ceramic","Ceramic Coating"],["coating","Ceramic Coating"],
-  ["engine","Engine Bay Cleaning"],["headlight","Headlight Restoration"],["pet hair","Pet Hair Removal"],
-  ["odor","Odor / Ozone Treatment"],["ozone","Odor / Ozone Treatment"],["wax","Express Wash & Wax"],
-  ["wash","Express Wash & Wax"],["detail","Full Detail (In & Out)"]];
-function quickParseLine(line){
-  let s=(line||"").trim(); if(!s)return null;
-  const out={name:"",phone:"",address:"",price:0,notes:"",date:"",time:"",service:"",job:false,items:[],dateGiven:false,past:false};
-  const eat=re=>{const m=s.match(re);if(m)s=s.replace(m[0]," ");return m;};
-  let m=eat(/(\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/); if(m)out.phone=cleanNum(m[0]);
-  // A time needs am/pm, ":MM", or a plain 1–12 — "at 49 Burnwood" is an ADDRESS and must not be eaten
-  const scanTime=re=>{const g=new RegExp(re.source,"ig");let mm;
-    while((mm=g.exec(s))){const h=+mm[1];
-      if(h>23||(mm[2]&&+mm[2]>59))continue;
-      if(!mm[3]&&!mm[2]&&(h<1||h>12))continue;
-      s=s.replace(mm[0]," ");return mm;}
-    return null;};
-  m=scanTime(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/)||scanTime(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
-  if(m){let h=+m[1];const ap=(m[3]||"").toLowerCase();
-    if(ap==="pm"&&h<12)h+=12; else if(ap==="am"&&h===12)h=0; else if(!ap&&h>=1&&h<8)h+=12; // bare 1–7 = afternoon
-    out.time=String(h).padStart(2,"0")+":"+(m[2]||"00");out.job=true;}
-  if(eat(/\b(?:today|tonight)\b/i)){out.date=today();out.job=true;out.dateGiven=true;}
-  else if(eat(/\b(?:tomm?orr?ow|tomorow|tmrw|tmr|tmw)\b/i)){out.date=offset(1);out.job=true;out.dateGiven=true;} // misspellings must not silently become "today, done & paid"
-  else if(eat(/\byesterday\b/i)){out.date=offset(-1);out.job=true;out.dateGiven=true;out.past=true;}
-  else{
-    const wd=["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
-    m=eat(new RegExp("\\b(?:next\\s+|this\\s+)?("+wd.join("|")+")\\b","i"));
-    if(m){const want=wd.indexOf(m[1].toLowerCase()),d=new Date();
-      d.setDate(d.getDate()+((want-d.getDay()+7)%7));out.date=localISO(d);out.job=true;out.dateGiven=true;}
-    else{m=eat(/\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}(?:st|nd|rd|th)?|\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/i);
-      if(m){const d=parseLooseDate(m[1]);if(d){out.date=d;out.job=true;out.dateGiven=true;}}}
-  }
-  if(/\b(did|done|finished|completed|cleaned|logged|had)\b/i.test(s)){out.job=true;out.past=true;
-    s=s.replace(/\b(did|done|finished|completed|cleaned|logged|had)\b/ig," ");}
-  if(/\b(scheduled|booked)\b/i.test(s)){out.job=true;
-    s=s.replace(/\b(scheduled|booked)\b/ig," ");}
-  // Each comma/"and" chunk can carry its own service + price: "Judy today 250 full detail, 70 engine bay" = 2 jobs.
-  const rests=[];
-  for(const seg of s.split(/[,;&]+|\band\b|\bplus\b/i)){
-    let t=seg,price=0,paid=false,service="";
-    let mm=t.match(/\$\s?(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s?\$/);
-    if(mm){price=+(mm[1]||mm[2])||0;t=t.replace(mm[0]," ");}
-    if(!price){mm=t.match(/\b(?:for|paid|collected|charged|quoted)\s+\$?(\d{2,5}(?:\.\d{1,2})?)\b/i);
-      if(mm){price=+mm[1];paid=true;if(/paid|collected|charged/i.test(mm[0]))out.past=true;t=t.replace(mm[0]," ");}} // "paid 249" = already happened
-    for(const[kw,svc]of QA_SERVICES){const re=new RegExp("\\b"+kw.replace(" ","\\s+")+"[a-z]*\\b","i");
-      if(re.test(t)){service=svc;
-        if(!price){ // bare number touching the service word is its price: "249 windows" / "windows 249"
-          const kre=kw.replace(" ","\\s+")+"[a-z]*";
-          const m2=t.match(new RegExp("\\b(\\d{2,5})\\s+"+kre+"\\b|\\b"+kre+"\\s+(\\d{2,5})\\b","i"));
-          if(m2&&+(m2[1]||m2[2])>=20){price=+(m2[1]||m2[2]);t=t.replace(m2[0]," ");}
-        }
-        t=t.replace(re," ");break;}}
-    if(price||service){out.items.push({service,price});out.job=true;} // a price means a booking, not just a note on a lead
-    rests.push(t);
-  }
-  s=rests.join(" ");
-  s=s.replace(/(\w)['’]s\b/g,"$1") // "Tina's windows" → Tina
-     .replace(/[.:!?]+/g," ")
-     .replace(/\b(for|at|on|in|to|with|from|and|her|his|him|she|he|the|a|an|i|we|of|house|home|this|next|new|add|log|book|client|lead|customer|guy|lady|mr|mrs|ms)\b/ig," ");
-  const toks=s.replace(/\s+/g," ").trim().split(" ").filter(Boolean);
-  let i=0,nameToks=[];
-  while(i<toks.length&&!/\d/.test(toks[i])&&nameToks.length<3){nameToks.push(toks[i]);i++;} // name = leading words before the first digit
-  out.name=nameToks.map(w=>w[0].toUpperCase()+w.slice(1)).join(" ");
-  out.address=toks.slice(i).join(" ");
-  if(!out.name&&!out.phone)return null;
-  if(out.job){
-    if(!out.items.length)out.items.push({service:"",price:0});
-    for(const it of out.items)if(!it.service)it.service="Full Detail (In & Out)";
-    if(!out.date)out.date=today();
-    if(!out.items[0].price){ // trailing lone number = the price: "sergey 49 burnwood 3:30pm 349"
-      const mt=out.address.match(/(?:^|\s)(\d{2,5})$/);
-      if(mt&&+mt[1]>=20){out.items[0].price=+mt[1];out.address=out.address.slice(0,mt.index).trim();}
-    }
-  }
-  out.price=out.items.length?out.items[0].price:0;
-  out.service=out.items.length?out.items[0].service:"";
-  return out;
-}
-function quickCommit(rows,status){
-  let added=0,updated=0,jobs=0;
-  for(const r of rows){
-    let c=findCust(r.name,r.phone);
-    if(!c&&r.name){ // "Judy" alone should find the existing Judy even though she has a phone on file
-      const n=r.name.trim().toLowerCase();
-      let cands=db.customers.filter(x=>(x.name||"").trim().toLowerCase()===n);
-      if(!cands.length) // "Tina" should still find "Tina Moroz" — first-name match, only when unambiguous
-        cands=db.customers.filter(x=>(x.name||"").trim().toLowerCase().split(/\s+/)[0]===n.split(/\s+/)[0]);
-      if(cands.length===1)c=cands[0];
-    }
-    const note=[!r.job&&r.price?("Quoted "+money(r.price)):"",(!r.job&&r.notes)||""].filter(Boolean).join(" · ");
-    if(!c){c={id:db.seqC++,name:r.name,phone:r.phone||"",email:"",street:r.address||"",city:"",state:"",zip:"",
-      status:r.job?"active":status,source:"",tags:[],access:"",notes:note,followup:"",
-      log:[{t:Date.now(),m:"✨ Added via Quick add"}],created:Date.now()};
-      db.customers.push(c);added++;}
-    else{if(r.address&&!c.street)c.street=r.address;if(r.phone&&!cleanNum(c.phone))c.phone=r.phone;
-      if(note)c.notes=c.notes?(c.notes+"\n"+note):note;updated++;}
-    if(r.job){
-      // completed & paid ONLY on an explicit past/now signal ("today", "yesterday", "did", "paid") —
-      // a price alone books an upcoming job, it never invents collected money
-      const done=r.date<=today()&&(r.past||r.dateGiven);
-      const items=(r.items&&r.items.length)?r.items:[{service:r.service,price:r.price}];
-      for(const it of items){
-        db.jobs.push({id:db.seqJ++,customerId:c.id,service:it.service,price:it.price||0,date:r.date,time:r.time||"",
-          recurring:"none",status:done?"completed":"scheduled",collected:done?(it.price||0):0,payMethod:"",
-          vehicle:"",notes:r.notes||"",created:Date.now(),completedAt:done?Date.now():0});
-        jobs++;
-      }
-      c.log=c.log||[];c.log.push({t:Date.now(),m:`✨ Quick add: ${done?"logged":"booked"} ${items.map(it=>it.service+(it.price?" "+money(it.price):"")).join(" + ")}`});
-    }
-  }
-  save();return{added,updated,jobs};
-}
-let qaRows=[],qaStatus="lead";
-function openQuick(){qaRows=[];
-  $("#qa-text").value="";$("#qa-preview").innerHTML="";$("#qa-note").style.display="none";
-  qaPaint();$("#qa-overlay").classList.add("show");setTimeout(()=>$("#qa-text").focus(),50);}
-function closeQuick(){$("#qa-overlay").classList.remove("show");}
-function qaParseText(){qaRows=$("#qa-text").value.split("\n").map(quickParseLine).filter(Boolean);qaPaintPreview();}
-function qaPaintPreview(){
-  $("#qa-preview").innerHTML=qaRows.length?`<div class="sec">Ready to add</div>`+qaRows.map(r=>{
-    const known=r.name&&db.customers.some(x=>(x.name||"").trim().toLowerCase()===r.name.toLowerCase());
-    const who=`${esc(r.name)}${known?` <span class="badge b-active" style="font-size:10.5px">known client</span>`:""}`;
-    const its=(r.items&&r.items.length)?r.items:[{service:r.service,price:r.price}];
-    const sub=r.job
-      ?`${its.map(it=>esc(it.service)+(it.price?" "+money(it.price):"")).join(" + ")} · ${fmtDateShort(r.date)}${r.time?" "+fmtTime(r.time):""} · ${r.date<=today()&&(r.past||r.dateGiven)?"✓ done &amp; paid":"📅 booked"}${r.notes?" · "+esc(r.notes):""}`
-      :`${esc(fmtPhone(r.phone)||"no phone")} · ${esc(r.address||"no address")}${r.price?" · quoted "+money(r.price):""}`;
-    return `<div class="jobline" style="cursor:default">
-    <div class="avatar" style="background:${avatarColor(r.name)};width:32px;height:32px;font-size:12px">${esc(initials(r.name))}</div>
-    <div class="jl-svc">${who}<small>${sub}</small></div></div>`;}).join(""):"";
-  qaPaint();
-}
-function qaPaint(){
-  $("#qa-add").disabled=!qaRows.length;
-  const nj=qaRows.reduce((s,r)=>s+(r.job?((r.items&&r.items.length)||1):0),0),np=qaRows.filter(r=>!r.job).length;
-  $("#qa-add").textContent=qaRows.length?`Add ${[nj?nj+" job"+(nj>1?"s":""):"",np?np+" "+(qaStatus==="lead"?"lead":"client")+(np>1?"s":""):""].filter(Boolean).join(" + ")}`:"Add";
-}
-$("#quick-add").onclick=openQuick;
-$("#qa-close").onclick=closeQuick;$("#qa-cancel").onclick=closeQuick;
-$("#qa-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#qa-overlay")))closeQuick();});
-$("#qa-text").addEventListener("input",qaParseText);
-$("#qa-status").querySelectorAll("button").forEach(b=>b.onclick=()=>{qaStatus=b.dataset.qs;
-  $("#qa-status").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));qaPaint();});
-$("#qa-add").onclick=()=>{
-  if(!qaRows.length)return;
-  const hadJobs=qaRows.some(r=>r.job);
-  const r=quickCommit(qaRows,qaStatus);
-  closeQuick();
-  if(hadJobs){view="dashboard";}else{view="customers";custFilter=qaStatus==="lead"?"lead":"all";}
-  render();
-  toast(`✨ ${r.jobs?r.jobs+" job"+(r.jobs>1?"s":"")+" logged, ":""}${r.added} new, ${r.updated} updated`,"ok");
-};
 
 /* ---------------- Go ---------------- */
 render();
