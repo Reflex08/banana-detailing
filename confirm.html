@@ -56,9 +56,6 @@
     text-align:right;color:var(--cocoa)}
   .total .due{display:block;font-size:11.5px;font-weight:600;color:var(--faint);text-align:right;margin-top:1px}
 
-  .policy{margin-top:12px;background:#fdf4da;border:1px solid var(--line);border-radius:11px;
-    padding:11px 13px;font-size:12.5px;line-height:1.5;color:var(--muted)}
-  .policy b{color:var(--cocoa)}
 
   .tc{display:flex;gap:13px;align-items:flex-start;margin-top:20px;padding-top:19px;border-top:1px solid var(--line)}
   .tc input{width:22px;height:22px;flex-shrink:0;margin:1px 0 0;accent-color:var(--cocoa);cursor:pointer}
@@ -151,10 +148,8 @@ function render(){
   if(!d){app.innerHTML='<div class="err">This confirmation link is incomplete or has expired.<br>'+
     'Please ask for a fresh one.</div>';return;}
   var when=fmtDate(d.dt),time=fmtTime(d.t),phone=fmtPhone(d.ph);
-  // The fee travels as a percentage; show the money it works out to as well, because
-  // "50%" means little next to a number the customer can read straight off.
+  // Still sent with the emailed record, and still fills {fee} in the terms.
   var feePct=(+d.f||0)+"%";
-  var feeAmt=(+d.f>0&&+d.p>0)?fmtMoney(Math.round(+d.p*(+d.f)/100)):"";
 
   app.innerHTML=
     '<div class="brand"><img id="logo" src="logo.png" alt="'+esc(d.b)+'"></div>'+
@@ -172,9 +167,6 @@ function render(){
       '<div class="total"><span class="k">Total</span>'+
         '<span><span class="v">'+esc(fmtMoney(d.p))+'</span>'+
         '<span class="due">due on completion</span></span></div>'+
-      '<div class="policy">Free to change or cancel up to <b>24 hours</b> before. '+
-        'After that a <b>'+esc(feePct)+' late-cancellation fee</b> applies'+
-        (feeAmt?' — '+esc(feeAmt)+' on this booking':'')+'.</div>'+
       '<div class="tc">'+
         '<input type="checkbox" id="chk">'+
         '<div><label class="tc-main" for="chk">I confirm this appointment and accept the terms</label>'+
