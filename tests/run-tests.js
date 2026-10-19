@@ -146,9 +146,11 @@ A.__setDb(A.normalize({
 const link = A.confirmLink(7);
 ok("confirmLink builds without a business phone", !!link, String(link));
 ok("confirmLink points at the hosted confirm page",
-   link.indexOf("/banana-detailing/confirm.html?d=") > 0, link);
+   link.indexOf("/banana-detailing/confirm.html?v=") > 0, link);
+ok("the link is versioned, so a cached confirm page cannot be served to it",
+   /confirm\.html\?v=\d+&d=/.test(link), link);
 const payload = JSON.parse(Buffer.from(
-  link.split("?d=")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+  link.split("&d=")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
 eq("payload carries the job id so the tick can come back", payload.j, [7]);
 eq("payload carries the vehicle", payload.v, "2021 Audi A4");
 eq("payload carries the price", payload.p, 250);

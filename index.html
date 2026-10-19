@@ -206,6 +206,7 @@
   .lx-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
   .lg-total{margin-left:auto;color:#7cc4fa;font-weight:800}
   .ph-pill{display:inline-block;background:#0d0e12;border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px}
+  .lc-chev{color:var(--faint);font-size:17px;font-weight:700;line-height:1}
   .lc-arrow{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#0d0e12;color:var(--muted);flex-shrink:0;font-size:14px}
   .lc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
   .lc-tags .lchip{padding:2px 8px;font-size:11px}
@@ -380,7 +381,7 @@
   <nav class="nav" id="nav">
     <a data-view="dashboard" class="active"><span class="ic">▦</span> Home</a>
     <a data-view="schedule"><span class="ic">🗓️</span> Schedule <span class="count" id="c-sched">0</span></a>
-    <a data-view="customers"><span class="ic">👥</span> Leads <span class="count" id="c-cust">0</span></a>
+    <a data-view="customers"><span class="ic">👥</span> Clients <span class="count" id="c-cust">0</span></a>
     <a data-view="settings"><span class="ic">⚙️</span> Settings</a>
   </nav>
   <div class="helper-status" id="backup-chip" title="Automatic backup status"><span class="led"></span><span id="backup-text">Auto-backup: off</span></div>
@@ -1015,15 +1016,6 @@ function custListRows(){
 }
 const CUST_STAGES=["lead","active","inactive"],CUST_STAGE_LABEL={lead:"Lead",active:"Active",inactive:"Inactive"};
 const CUST_SORT_CYCLE=[["name-asc","Name A–Z"],["paid-desc","Paid: high → low"],["recent","Most recent service"]];
-function custStageMove(id,d){ // ‹ › on a card: shift status one step, log it, repaint
-  const c=custById(id); if(!c)return;
-  const i=CUST_STAGES.indexOf(c.status), n=i+d;
-  if(i<0||n<0||n>=CUST_STAGES.length)return;
-  const to=CUST_STAGE_LABEL[CUST_STAGES[n]];
-  c.log=c.log||[]; c.log.push({t:Date.now(),m:"↔ Stage: "+CUST_STAGE_LABEL[c.status]+" → "+to});
-  c.status=CUST_STAGES[n];
-  save(); toast(c.name+" → "+to); paintCustRows();
-}
 function paintCustRows(){ // repaint just the list — the search box keeps focus while typing
   const all=custListRows(), pages=Math.max(1,Math.ceil(all.length/custPageSize));
   custPage=Math.min(Math.max(custPage,0),pages-1);
@@ -1035,22 +1027,21 @@ function paintCustRows(){ // repaint just the list — the search box keeps focu
     const tot=rows.reduce((s,c)=>s+custCollected(c.id),0);
     return `<div class="lead-grp"><div class="lg-head"><span class="lg-bar" style="background:${color}"></span><div><div class="lg-label">${label}</div><div class="lg-count">${rows.length} ${noun}${rows.length===1?"":"s"}</div></div><span class="lg-total">${money(tot)}</span></div>${rows.map(custCard).join("")}</div>`;
   }).join(""):
-    `<div class="empty"><div class="big">👥</div>${query?"No one matches that search.":"No customers here yet."}<br><button class="btn btn-primary" id="empty-cust">＋ Add a customer</button></div>`;
+    `<div class="empty"><div class="big">👥</div>${query?"No one matches that search.":"No clients yet."}<br><button class="btn btn-primary" id="empty-cust">＋ Add a client</button></div>`;
   const pager=pages>1?`<button class="fcir" data-cpage="-1"${custPage<=0?' disabled style="opacity:.3"':""}>‹</button>
       <button class="fcir" data-cpage="1"${custPage>=pages-1?' disabled style="opacity:.3"':""}>›</button>`:"";
-  $("#cust-foot").innerHTML=`<span class="lead-total" id="cust-total">${all.length} total lead${all.length===1?"":"s"}</span>
+  $("#cust-foot").innerHTML=`<span class="lead-total" id="cust-total">${all.length} ${all.length===1?"client":"clients"}</span>
     <button class="fpill" id="cust-pagesize" title="Rows per page">${custPageSize} | page</button>${pager}`;
   const ec=$("#empty-cust"); if(ec) ec.onclick=()=>openCust(null);
   document.querySelectorAll("[data-cust]").forEach(el=>el.onclick=()=>openCust(+el.dataset.cust));
-  document.querySelectorAll("[data-stageback]").forEach(b=>b.onclick=e=>{e.stopPropagation();custStageMove(+b.dataset.stageback,-1);});
-  document.querySelectorAll("[data-stagefwd]").forEach(b=>b.onclick=e=>{e.stopPropagation();custStageMove(+b.dataset.stagefwd,1);});
   document.querySelectorAll("[data-cpage]").forEach(b=>b.onclick=()=>{custPage+=+b.dataset.cpage;paintCustRows();});
   const ps=$("#cust-pagesize"); if(ps) ps.onclick=()=>{custPageSize={25:50,50:100}[custPageSize]||25;custPage=0;paintCustRows();};
 }
 function renderCustomers(){
   custPage=0;
-  const stages=[["all","All leads"],["lead","Leads"],["active","Active"],["inactive","Inactive"]];
-  const label=(stages.find(s=>s[0]===custFilter)||stages[1])[1];
+  // "Lead" is a state a client is in, so the filter reads as one list with views on it.
+  const stages=[["all","All clients"],["lead","Leads"],["active","Active"],["inactive","Inactive"]];
+  const label=(stages.find(s=>s[0]===custFilter)||stages[0])[1];
   const opts=stages.map(([v,l])=>`<option value="${v}" ${custFilter===v?"selected":""}>${l}</option>`).join("");
   const searching=custSearchOpen||!!query;
   $("#content").innerHTML=`
@@ -1058,7 +1049,7 @@ function renderCustomers(){
       <div class="lx-title">${label} <span class="lx-chev">⌄</span><select id="cust-stage" aria-label="Filter by stage">${opts}</select></div>
       <button class="fcir" id="cust-search-btn" title="Search" style="margin-left:auto">⌕</button>
       <button class="fcir" id="cust-sort-btn" title="Sort">☰</button>
-      <button class="fcir" id="cust-add2" title="New customer">＋</button>
+      <button class="fcir" id="cust-add2" title="New client">＋</button>
     </div>
     ${searching?`<div class="toolbar" style="margin-bottom:10px"><div class="search" style="max-width:none;flex:1"><span class="mag">⌕</span><input id="search" type="text" aria-label="Search clients"></div></div>`:""}
     <div id="cust-list"></div>
@@ -1087,20 +1078,21 @@ function sortCustomers(list){
   };
   return list.sort(cmp[custSort]||cmp["name-asc"]);
 }
+/* One row per client: who they are, their number, what they have paid. Tapping it opens
+   the sheet, which is where the status, the notes and the job history live. */
 function custCard(c){
-  const paid=custCollected(c.id), i=CUST_STAGES.indexOf(c.status);
-  const arrow=(d,ch,attr)=>`<button class="lc-arrow"${(i>=0&&i+d>=0&&i+d<CUST_STAGES.length)?` data-${attr}="${c.id}"`:' disabled style="opacity:.3"'}>${ch}</button>`;
-  let pills=(c.tags||[]).slice(0,2).map(t=>`<span class="ph-pill" style="margin-top:0">${esc(t)}</span>`).join("");
+  const paid=custCollected(c.id);
+  let pills=(c.tags||[]).filter(t=>t!=="sample").slice(0,2)
+    .map(t=>`<span class="ph-pill" style="margin-top:0">${esc(t)}</span>`).join("");
   if(c.followup){const d=Math.round((new Date(c.followup+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5);
     pills+=`<span class="lchip" title="Follow-up ${esc(c.followup)}">${d>=0?d+"d":"due"}</span>`;}
   return `<div class="lead-card" data-cust="${c.id}">
-      ${arrow(-1,"‹","stageback")}
       <div class="avatar" style="background:${avatarColor(c.name)}">${esc(initials(c.name))}</div>
       <div class="lc-mid"><div class="nm">${esc(c.name)}</div>
         ${c.phone?`<div><span class="ph-pill">${esc(fmtPhone(c.phone))}</span></div>`:""}
         ${pills?`<div class="lc-tags">${pills}</div>`:""}</div>
-      <div class="lc-right">${paid>0?`<span class="lchip">${money(paid)}</span>`:""}</div>
-      ${arrow(1,"›","stagefwd")}
+      <div class="lc-right">${paid>0?`<span class="lchip">${money(paid)}</span>`:""}
+        <span class="lc-chev">›</span></div>
     </div>`;
 }
 
@@ -1767,6 +1759,7 @@ async function pullConfirms(){
    no server and no database. Keep the payload keys short — a long URL gets mangled by some
    SMS apps. `ph` is optional: with no separate business line the link goes out from the
    owner's own phone, so the client already has that thread to reply in. */
+const CONFIRM_VER="4";   // bump on every confirm.html change
 function confirmLink(id){
   const j=db.jobs.find(x=>x.id===id); if(!j)return null;
   const biz=db.settings.business||{};
@@ -1780,7 +1773,10 @@ function confirmLink(id){
     j:[j.id],c:j.customerId,r:RELAY.indexOf("REPLACE")<0?RELAY:""}; // r+j: how the tick finds its way back
   const b64=btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
     .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  return "https://reflex08.github.io/banana-detailing/confirm.html?d="+b64;
+  // GitHub Pages serves this with a 10-minute cache and phones hold it longer, so each
+  // link carries a version. Bump CONFIRM_VER whenever confirm.html changes and every link
+  // sent from then on is a fresh URL that cannot hit a stale copy.
+  return "https://reflex08.github.io/banana-detailing/confirm.html?v="+CONFIRM_VER+"&d="+b64;
 }
 /* The client confirms, not Igor — so this just hands the link to his messages app. */
 function sendConfirmLink(id){
