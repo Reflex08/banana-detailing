@@ -479,7 +479,7 @@ const DEFAULT_SERVICES=[
   {name:"Engine Bay Cleaning",price:70},{name:"Headlight Restoration",price:80},
   {name:"Pet Hair Removal",price:60},{name:"Odor / Ozone Treatment",price:90},
 ];
-const DEFAULT_SETTINGS=()=>({business:{name:"Banana Detailing",owner:"Igor",phone:"",email:"",notify:"koncurigor2008@gmail.com"},services:JSON.parse(JSON.stringify(DEFAULT_SERVICES))});
+const DEFAULT_SETTINGS=()=>({business:{name:"Banana Detailing",owner:"Igor",phone:"",email:"",notify:"koncurigor2008@gmail.com",cancelFeePct:50},services:JSON.parse(JSON.stringify(DEFAULT_SERVICES))});
 
 /* ---------------- Storage + migration ---------------- */
 let db=load();
@@ -515,7 +515,7 @@ function normalize(r){
   // Backfill every business field a stored db may pre-date. Missing `notify` was silently
   // disabling the confirmation email: the link carried an empty address and the page skipped
   // the send without complaining.
-  ["owner","notify","phone","email"].forEach(k=>{if(!s.business[k]&&d.business[k])s.business[k]=d.business[k];});
+  ["owner","notify","phone","email","cancelFeePct"].forEach(k=>{if(!s.business[k]&&d.business[k])s.business[k]=d.business[k];});
   if(!Array.isArray(s.services)||!s.services.length) s.services=d.services;
   if(!Array.isArray(r.jobs)) r.jobs=[];
   r.jobs.forEach(j=>{j.termsAcceptedAt=+j.termsAcceptedAt||0;}); // backfill: pre-dates the confirm flow
@@ -1166,6 +1166,7 @@ function renderSettings(){
          <div class="field"><label>Your first name</label><input id="biz-owner" placeholder="used to greet you on the dashboard" value="${esc(s.business.owner||"")}"></div>
          <div class="field"><label>Phone</label><input id="biz-phone" value="${esc(s.business.phone||"")}"></div>
          <div class="field"><label>Confirmation email</label><input id="biz-notify" type="email" value="${esc(s.business.notify||"")}"></div>
+         <div class="field pre"><label>Late-cancellation fee</label><span class="sym" style="top:33px">%</span><input id="biz-fee" type="number" min="0" max="100" step="5" style="padding-left:26px" value="${+s.business.cancelFeePct||0}"></div>
          <div class="hint">Your business name fills the <b>{business}</b> variable in every text.
            Signed contracts open a prefilled email to the confirmation address — press Send in your mail app.</div>
        </div></div>
@@ -1201,6 +1202,7 @@ function renderSettings(){
   $("#biz-owner").onchange=e=>{s.business.owner=e.target.value.trim();save();render();};
   $("#biz-phone").onchange=e=>{s.business.phone=e.target.value.trim();save();};
   $("#biz-notify").onchange=e=>{s.business.notify=e.target.value.trim();save();};
+  $("#biz-fee").onchange=e=>{s.business.cancelFeePct=Math.max(0,Math.min(100,+e.target.value||0));save();};
   // services
   renderSvcList();
   $("#svc-add").onclick=()=>{s.services.push({name:"New service",price:0});save();renderSvcList();};
@@ -1690,7 +1692,7 @@ function confirmLink(id){
   const c=custById(j.customerId);
   const payload={b:biz.name||"",ph:bizPhone||"",n:firstName(c?c.name:""),
     s:j.service,v:j.vehicle||"",dt:j.date,t:j.time||"",p:+j.price||0,
-    a:(c&&c.street)||"",e:(biz.notify||""),
+    a:(c&&c.street)||"",e:(biz.notify||""),f:+biz.cancelFeePct||0,
     j:[j.id],c:j.customerId,r:RELAY.indexOf("REPLACE")<0?RELAY:""}; // r+j: how the tick finds its way back
   const b64=btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
     .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
