@@ -35,6 +35,7 @@ const shim = script + `
 ;globalThis.__k = {DEFAULT_SERVICES,DEFAULT_SETTINGS,QA_SERVICES,GOAL,KEY,OLDKEY,RELAY};
 ;globalThis.__setDb = v => { db = v; };
 ;globalThis.__setSvc = v => { jobSvc = v; };
+;globalThis.__getDb = () => db;
 `;
 
 // Minimal DOM: every lookup returns an inert node, so render paths run without throwing.
@@ -198,16 +199,16 @@ A.__setDb(A.normalize({
   settings: K.DEFAULT_SETTINGS(), seqC: 2, seqJ: 2,
 }));
 A.uncompleteJob(1);
-const undone = A.db.jobs[0];
+const undone = A.__getDb().jobs[0];
 eq("Not done puts the job back to booked", undone.status, "scheduled");
 eq("Not done clears the collected amount", undone.collected, 0);
 eq("Not done clears the completed stamp", undone.completedAt, 0);
 ok("Not done leaves a trail of what was collected",
-   A.db.customers[0].log.some(l => /Done undone/.test(l.m) && /150/.test(l.m)));
+   A.__getDb().customers[0].log.some(l => /Done undone/.test(l.m) && /150/.test(l.m)));
 ok("a booked card is blue, not green", A.weekCard(undone).indexOf("week-card done") < 0);
 ok("a booked card keeps the confirmed tick", A.weekCard(undone).includes('class="ck"'));
-A.db.jobs[0].status = "completed";
-ok("a done card is green", A.weekCard(A.db.jobs[0]).includes("week-card done"));
+A.__getDb().jobs[0].status = "completed";
+ok("a done card is green", A.weekCard(A.__getDb().jobs[0]).includes("week-card done"));
 
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
