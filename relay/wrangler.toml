@@ -1,0 +1,14 @@
+name = "banana-confirm-relay"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Created by: wrangler kv namespace create CONF
+# Paste the printed id below before the first deploy.
+[[kv_namespaces]]
+binding = "CONF"
+id = "REPLACE_WITH_KV_ID"
+
+[vars]
+# Read-only key for the CRM's minute poll. Public by necessity (it ships inside the
+# page), and it guards nothing but a 30-day list of "job N was confirmed".
+READ_KEY = "bn-39515b84e20e5a76"

@@ -137,6 +137,13 @@ function render(){
         navigator.clipboard.writeText(msg).then(ok,function(){prompt("Copy this message:",msg);});
       else prompt("Copy this message:",msg);
     };
+    // Tell the CRM directly so the booking ticks itself; the app polls this every minute.
+    if(d.r&&d.j&&d.j.length){
+      try{
+        fetch(d.r+"/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({jobIds:d.j,cid:d.c,name:d.n})}).catch(function(){});
+      }catch(e){}
+    }
     // Written proof emailed to the business the moment they agree. Fire-and-forget — the SMS
     // receipt above is the fallback if this fails or was never activated.
     if(d.e){

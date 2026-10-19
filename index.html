@@ -537,6 +537,7 @@ function normalize(r){
     if(rt) s.templates.push(Object.assign({},rt));
   }
   if(!Array.isArray(r.jobs)) r.jobs=[];
+  r.jobs.forEach(j=>{j.termsAcceptedAt=+j.termsAcceptedAt||0;}); // backfill: pre-dates the confirm flow
   if(!r.seqC) r.seqC=Math.max(0,...r.customers.map(c=>c.id||0))+1;
   if(!r.seqJ) r.seqJ=Math.max(0,...r.jobs.map(j=>j.id||0))+1;
   return r;
@@ -950,7 +951,7 @@ function weekCard(j){
   const done=j.status==="completed";
   return `<div class="week-card${done?" done":""}" data-jobcard="${j.id}">
     ${j.time?`<div class="wt">${esc(fmtTime(j.time))}</div>`:""}
-    <div class="wn">${esc(c.name)}</div>
+    <div class="wn">${esc(c.name)}${!done&&j.termsAcceptedAt?" ✓":""}</div>
     <div class="wp">${money2(j.price)}</div>
   </div>`;
 }
@@ -1010,6 +1011,7 @@ function jobCard(j,overdueFlag){
       <div class="l1"><span class="svc">${esc(j.service)}</span>
         ${money(j.price)!=="$0"?`<span class="money">${money(j.price)}</span>`:""}
         ${bal>0?`<span class="badge b-${ps}">${money(bal)} due</span>`:""}
+        ${j.termsAcceptedAt&&j.status!=="completed"?`<span class="badge b-active">✓ Confirmed</span>`:""}
       </div>
       <div class="who">👤 ${esc(c.name)}${c.phone?` · <a href="tel:${esc(cleanNum(c.phone))}">${esc(fmtPhone(c.phone))}</a>`:""}${addr1(c)?` · 📍 <a href="${mapsUrl(c)}" target="_blank" rel="noopener">${esc(addrFull(c))}</a>`:""}</div>
       ${j.vehicle?`<div class="who" style="color:var(--faint)">🚗 ${esc(j.vehicle)}</div>`:""}
@@ -1333,7 +1335,7 @@ function jobLine(j){
   const st=JOB_STATUS.find(s=>s.id===j.status);const bal=jobBalance(j);
   return `<div class="jobline" data-jl="${j.id}">
     <div class="jl-date">${fmtDateShort(j.date)}<br><span class="sub" style="font-weight:600">${fmtTime(j.time)||""}</span></div>
-    <div class="jl-svc">${esc(j.service)}<small>${money(j.price)} · ${st.label}${j.vehicle?" · 🚗 "+esc(j.vehicle):""}</small></div>
+    <div class="jl-svc">${esc(j.service)}${j.termsAcceptedAt?` <span style="opacity:.65" title="Client confirmed">📋</span>`:""}<small>${money(j.price)} · ${st.label}${j.vehicle?" · 🚗 "+esc(j.vehicle):""}</small></div>
     ${j.status!=="completed"?"":bal>0?`<span class="money owe">${money(bal)} due</span>`:`<span class="badge b-paid">paid</span>`}
   </div>`;
 }
@@ -1420,6 +1422,7 @@ function openJob(id,focusPay,presetCust){
   $("#job-hsub").textContent=c?(c.name+(addrFull(c)?" · "+addrFull(c):"")):"";
   $("#job-delete").style.display=j?"inline-block":"none";
   $("#job-confirm").style.display=(j&&c&&c.phone)?"inline-block":"none"; // needs a saved job and a number to text
+  $("#job-confirm").textContent=(j&&j.termsAcceptedAt)?`✓ Confirmed`:`📋 Confirm`;
   $("#job-body").innerHTML=jobForm(j,cid);
   bindJobForm();
   $("#job-overlay").classList.add("show");
@@ -1531,22 +1534,66 @@ $("#job-delete").onclick=()=>{if(!editJob)return;if(!confirm("Delete this job? T
   db.jobs=db.jobs.filter(x=>x.id!==editJob);save();dismissJob();
   if($("#cust-overlay").classList.contains("show")&&editCust)openCust(editCust);render();toast("Job deleted");};
 $("#job-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#job-overlay")))closeJob();});
-$("#job-confirm").onclick=()=>{if(editJob)sendConfirmLink(editJob);};
+$("#job-confirm").onclick=()=>{
+  if(!editJob)return;
+  const j=db.jobs.find(x=>x.id===editJob);
+  if(j&&j.termsAcceptedAt){
+    if(!confirm(`Confirmed ${fmtWhen(j.termsAcceptedAt)}.\n\nOK = send the link again. Cancel = clear the confirmation.`)){
+      j.termsAcceptedAt=0;save();render();openJob(editJob);toast("Confirmation cleared","ok");return;
+    }
+  }
+  sendConfirmLink(editJob);
+};
 
 /* ---------------- Client confirmation ----------------
-   The booking details ride in the link itself, base64url-encoded, so the hosted page needs
+   RELAY is a tiny Cloudflare worker (see relay/ in this repo). It exists only so a client
+   tapping Confirm on their own phone can reach this app, which has no backend of its own.
+   Leave RELAY empty and everything still works — the tick just has to be done by hand. */
+const RELAY="https://banana-confirm-relay.REPLACE.workers.dev";
+const RELAY_KEY="bn-39515b84e20e5a76";
+const CONF_SEEN="banana.confseen";
+/* Poll for "the client agreed" and tick the job. Runs on load and every minute after.
+   Idempotent: a job already marked is skipped, so a replayed record never double-logs. */
+async function pullConfirms(){
+  if(!RELAY||RELAY.indexOf("REPLACE")>=0)return;
+  let since=+localStorage.getItem(CONF_SEEN)||0;
+  let rows;
+  try{
+    const res=await fetch(RELAY+"/confirms?since="+since+"&k="+encodeURIComponent(RELAY_KEY));
+    if(!res.ok)return;
+    rows=await res.json();
+  }catch(e){return;} // offline, or the relay isn't up — try again next minute
+  if(!Array.isArray(rows)||!rows.length)return;
+  let hit=0,who="";
+  rows.forEach(r=>{
+    (r.jobIds||[]).forEach(id=>{
+      const j=db.jobs.find(x=>x.id===id);
+      if(!j||j.termsAcceptedAt)return;
+      j.termsAcceptedAt=r.t||Date.now(); hit++;
+      const c=custById(j.customerId); who=who||(c&&c.name)||r.name||"";
+      if(c){c.log=c.log||[];c.log.push({t:j.termsAcceptedAt,m:"✓ Client confirmed — "+j.service});}
+    });
+    if(r.t>since)since=r.t;
+  });
+  localStorage.setItem(CONF_SEEN,String(since));
+  if(hit){save();render();
+    toast(hit===1?`✓ ${who||"Client"} confirmed their booking`:`✓ ${hit} bookings confirmed`,"ok");}
+}
+/* The booking details ride in the link itself, base64url-encoded, so the hosted page needs
    no server and no database. Keep the payload keys short — a long URL gets mangled by some
-   SMS apps. `ph` is the BUSINESS phone: the client's Agree opens a text back to Igor, which
-   is his receipt. */
+   SMS apps. `ph` is optional: with no separate business line the link goes out from the
+   owner's own phone, so the client already has that thread to reply in. */
 function confirmLink(id){
   const j=db.jobs.find(x=>x.id===id); if(!j)return null;
   const biz=db.settings.business||{};
+  // No separate business line: the link is texted from the owner's own phone, so the client
+  // already has the thread to reply in. `ph` is optional and only fills the call-back link.
   const bizPhone=cleanNum(biz.phone);
-  if(!bizPhone){toast("Add your business phone in Settings first","err");return null;}
   const c=custById(j.customerId);
-  const payload={b:biz.name||"",ph:bizPhone,n:firstName(c?c.name:""),
+  const payload={b:biz.name||"",ph:bizPhone||"",n:firstName(c?c.name:""),
     s:j.service,v:j.vehicle||"",dt:j.date,t:j.time||"",p:+j.price||0,
-    a:(c&&c.street)||"",e:(biz.notify||"")};
+    a:(c&&c.street)||"",e:(biz.notify||""),
+    j:[j.id],c:j.customerId,r:RELAY.indexOf("REPLACE")<0?RELAY:""}; // r+j: how the tick finds its way back
   const b64=btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
     .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
   return "https://reflex08.github.io/banana-detailing/confirm.html?d="+b64;
@@ -2093,6 +2140,8 @@ $("#qa-add").onclick=()=>{
 render();
 initAutoBackup();setInterval(paintBackupChip,60000);
 syncPull();paintSyncChip();setInterval(paintSyncChip,60000);
+pullConfirms();setInterval(pullConfirms,60000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)pullConfirms();}); // phone: check on wake
 // iOS home-screen app: guarantee the floating chrome clears the status bar / Dynamic Island,
 // even when env(safe-area-inset-top) resolves to 0 (iOS caches install-time settings).
 (function fixSafeArea(){
