@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Confirm your detail</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#07080a; --panel:#121319; --ink:#f5f6f8; --muted:#9aa1ab; --faint:#6b7280;
+    --line:rgba(255,255,255,.08); --brand:#f2c53d; --on-brand:#2b2104; --green:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:28px 16px 48px;display:flex;justify-content:center}
+  .wrap{width:100%;max-width:440px}
+  .word{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--brand);text-align:center}
+  .greet{font-size:26px;font-weight:800;letter-spacing:-.3px;margin:18px 0 14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .svc{font-size:20px;font-weight:800;line-height:1.25}
+  .veh{color:var(--muted);font-size:14px;font-weight:600;margin-top:3px}
+  .when{color:var(--muted);font-size:14.5px;margin-top:10px}
+  .addr{color:var(--faint);font-size:13px;margin-top:3px}
+  .price{font-size:34px;font-weight:800;margin-top:14px;letter-spacing:-.5px}
+  .price small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0}
+  .tc-row{display:flex;gap:11px;align-items:flex-start;margin-top:18px;
+    border-top:1px solid var(--line);padding-top:16px}
+  .tc-row input{width:21px;height:21px;flex-shrink:0;accent-color:var(--brand);margin:1px 0 0}
+  .tc-main{font-weight:700;font-size:14.5px;line-height:1.35}
+  .tc-hint{font-size:13px;color:var(--muted);margin-top:2px}
+  .tc-hint a{color:var(--brand);text-decoration:underline;cursor:pointer}
+  .terms{display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+  .terms.open{display:block}
+  .terms h2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 8px}
+  .terms ol{margin:0;padding-left:18px}
+  .terms li{color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:7px}
+  .cta{width:100%;border:0;border-radius:12px;padding:15px;font-size:15.5px;font-weight:800;
+    background:var(--brand);color:var(--on-brand);cursor:pointer;margin-top:16px;font-family:inherit}
+  .cta[disabled]{opacity:.4;cursor:not-allowed}
+  .cta.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .call{text-align:center;color:var(--muted);font-size:13.5px;margin-top:18px}
+  .call a{color:var(--brand)}
+  .done{text-align:center;margin-top:16px}
+  .ck{width:54px;height:54px;border-radius:50%;background:var(--green);color:#06281c;
+    font-size:29px;font-weight:800;line-height:54px;margin:0 auto 12px}
+  .headline{font-size:20px;font-weight:800}
+  .note{color:var(--muted);font-size:13.5px;margin-top:8px;line-height:1.5}
+  .msgbox{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:12px;font-size:13px;color:var(--muted);margin-top:12px;text-align:left}
+  .err{text-align:center;color:var(--muted);padding:40px 0;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+/* Everything this page shows arrives in the ?d= parameter, base64url-encoded by the CRM.
+   No server, no database — the link IS the record. */
+var TERMS=[
+ "Please have the vehicle accessible at the agreed time and place, emptied of personal belongings, with keys or access arranged.",
+ "The price covers the service booked for the vehicle named above. Heavy soiling, pet hair, smoke or biohazard contamination, deep stains or paint defects beyond that service may need extra time — you will be quoted before any extra work starts.",
+ "Existing chips, scratches, dents, trim damage, failing clear coat and worn upholstery are not the detailer's responsibility. Cleaning can make existing defects more visible.",
+ "Work is carried out to the best achievable standard, but some stains, water etching, swirl marks and odours cannot be fully removed.",
+ "Rescheduling or cancelling is free with 24 hours' notice. Later cancellations and no-shows may be charged.",
+ "Payment is due when the detail is finished."
+];
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(m){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];});}
+function digits(p){return String(p||"").replace(/[^\d]/g,"");}
+function fmtPhone(p){var d=digits(p);if(d.length===11&&d[0]==="1")d=d.slice(1);
+  return d.length===10?"("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6):String(p||"");}
+function fmtTime(t){if(!t)return"";var a=t.split(":"),h=+a[0],m=a[1]||"00";
+  var ap=h>=12?"PM":"AM";h=((h+11)%12)+1;return h+":"+m+" "+ap;}
+function fmtDate(iso){if(!iso)return"";var d=new Date(iso+"T12:00:00");
+  if(isNaN(d))return iso;
+  return d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});}
+function fmtMoney(p){return "$"+(+p||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function parseData(){
+  try{
+    var q=new URLSearchParams(location.search).get("d");
+    if(!q)return null;
+    var b=q.replace(/-/g,"+").replace(/_/g,"/");
+    while(b.length%4)b+="=";
+    var o=JSON.parse(decodeURIComponent(escape(atob(b))));
+    return o&&o.s?o:null;
+  }catch(e){return null;}
+}
+function render(){
+  var d=parseData(),app=document.getElementById("app");
+  if(!d){app.innerHTML='<div class="err">This confirmation link is incomplete or has expired.<br>'+
+    'Please ask for a fresh one.</div>';return;}
+  var when=fmtDate(d.dt),time=fmtTime(d.t),phone=fmtPhone(d.ph);
+  app.innerHTML=
+    '<div class="word">'+esc(d.b)+'</div>'+
+    '<div class="greet">Hi '+esc(d.n)+',</div>'+
+    '<div class="card">'+
+      '<div class="svc">'+esc(d.s)+'</div>'+
+      (d.v?'<div class="veh">'+esc(d.v)+'</div>':'')+
+      '<div class="when">'+esc(when)+(time?' &middot; '+esc(time):'')+'</div>'+
+      (d.a?'<div class="addr">'+esc(d.a)+'</div>':'')+
+      '<div class="price">'+esc(fmtMoney(d.p))+' <small>due on completion</small></div>'+
+      '<div class="tc-row"><input type="checkbox" id="chk" aria-label="Accept the terms">'+
+        '<div><div class="tc-main">I confirm this appointment and accept the terms</div>'+
+        '<div class="tc-hint"><a id="rev">Tap to review</a></div></div></div>'+
+      '<div class="terms" id="terms"><h2>Terms</h2><ol>'+
+        TERMS.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+
+      '</ol></div>'+
+    '</div>'+
+    '<div id="cta"><button class="cta" id="go" disabled>Confirm appointment</button></div>'+
+    (d.ph?'<div class="call">Prefer to call? <a href="tel:'+esc(digits(d.ph))+'">'+esc(phone)+'</a></div>':'');
+
+  var chk=document.getElementById("chk"),rev=document.getElementById("rev"),go=document.getElementById("go");
+  chk.onchange=function(){go.disabled=!chk.checked;};
+  rev.onclick=function(e){e.preventDefault();
+    var t=document.getElementById("terms");t.classList.toggle("open");
+    rev.textContent=t.classList.contains("open")?"Hide":"Tap to review";};
+
+  go.onclick=function(){
+    if(!chk.checked)return;
+    var msg="CONFIRMED ✓ — "+d.n+", "+d.s+(d.v?" ("+d.v+")":"")+" on "+when+
+      (time?", "+time:"")+" for "+fmtMoney(d.p)+". I accept the terms.";
+    var sms="sms:"+digits(d.ph)+"?&body="+encodeURIComponent(msg);
+    document.getElementById("cta").innerHTML=
+      '<div class="done"><div class="ck">&#10003;</div>'+
+      '<div class="headline">Confirmed &mdash; thank you!</div>'+
+      '<div class="note">Your messages app is opening. Press send &mdash; that text is your receipt.</div>'+
+      '<div class="msgbox">'+esc(msg)+'</div>'+
+      '<div class="note">Didn\'t open? Text it to <b>'+esc(phone)+'</b>:</div>'+
+      '<a class="cta" href="'+esc(sms)+'" style="display:block;text-align:center;text-decoration:none">Text '+esc(phone)+'</a>'+
+      '<button class="cta ghost" id="cp">Copy message</button></div>';
+    var cp=document.getElementById("cp");
+    cp.onclick=function(){
+      var ok=function(){cp.textContent="Copied ✓";};
+      if(navigator.clipboard&&navigator.clipboard.writeText)
+        navigator.clipboard.writeText(msg).then(ok,function(){prompt("Copy this message:",msg);});
+      else prompt("Copy this message:",msg);
+    };
+    // Written proof emailed to the business the moment they agree. Fire-and-forget — the SMS
+    // receipt above is the fallback if this fails or was never activated.
+    if(d.e){
+      try{
+        fetch("https://formsubmit.co/ajax/"+encodeURIComponent(d.e),{method:"POST",
+          headers:{"Content-Type":"application/json","Accept":"application/json"},
+          body:JSON.stringify({
+            _subject:"CONFIRMED — "+d.n+" ("+d.s+", "+when+")",
+            _template:"table",
+            client:d.n, service:d.s, vehicle:d.v||"—",
+            date:when, time:time||"anytime", address:d.a||"—",
+            price:fmtMoney(d.p),
+            agreed:"Yes — confirmed the appointment and accepted the terms",
+            agreed_at:new Date().toString(),
+            terms_shown:TERMS.join(" | ")
+          })}).catch(function(){});
+      }catch(e){}
+    }
+    location.href=sms;
+  };
+}
+render();
+</script>
+</body>
+</html>

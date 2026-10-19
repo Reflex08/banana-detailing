@@ -251,7 +251,6 @@
   .overlay.show{display:flex}
   body:has(.overlay.show){overflow:hidden} /* page behind a modal must not scroll */
   #cust-overlay{z-index:50} #job-overlay{z-index:60} #sms-overlay,#bulk-overlay,#paste-overlay,#qa-overlay{z-index:70}
-  #quote-overlay{z-index:80}
   .modal{background:#15161c;border:1px solid var(--line);border-radius:20px;width:100%;max-width:640px;box-shadow:var(--shadow-lg);margin:auto 0}
   .modal.lg{max-width:760px} .modal.sm{max-width:520px}
   .modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -296,13 +295,6 @@
   .week-card .wn{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .week-card .wp{font-size:11.5px;font-weight:800;margin-top:2px}
   .week-empty{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0;font-style:italic}
-  .qgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 16px}
-  .qm{background:#0d0e12;border:1px solid var(--line);border-radius:11px;padding:10px 6px;text-align:center;font-weight:700;font-size:12.5px;color:var(--ink)}
-  .qm small{display:block;font-size:10px;color:var(--faint);font-weight:600}
-  .qm-hit{border-color:#34d399;color:#34d399}
-  .qm-hit .vis{display:block;font-size:8.5px;letter-spacing:.08em;font-weight:800;margin-bottom:2px}
-  .qnotes{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);font-size:13px;margin-top:3px}
-  #sig-pad{width:100%;height:180px;background:#0d0e12;border:1px solid var(--line);border-radius:14px;touch-action:none;display:block}
 
   /* customer detail bits */
   .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13.5px}
@@ -406,8 +398,7 @@
   <div class="modal-body" id="job-body"></div>
   <div class="modal-foot">
     <button class="btn del" id="job-delete" style="display:none">Delete</button>
-    <button class="btn" id="job-text" style="display:none">💬 Remind</button>
-    <button class="btn" id="job-quote" style="display:none">✍ Quote</button>
+    <button class="btn" id="job-confirm" style="display:none">📋 Confirm</button>
     <button class="btn" id="job-cancel">Cancel</button>
     <button class="btn btn-primary" id="job-save">Save Job</button>
   </div>
@@ -463,7 +454,6 @@
   </div>
 </div></div>
 <!-- Quote / Accept & Sign sheet -->
-<div class="overlay" id="quote-overlay"><div class="modal sm" id="quote-modal"></div></div>
 
 <input type="file" id="file-json" accept=".json" style="display:none">
 <input type="file" id="file-csv" accept=".csv" style="display:none">
@@ -1020,7 +1010,6 @@ function jobCard(j,overdueFlag){
       <div class="l1"><span class="svc">${esc(j.service)}</span>
         ${money(j.price)!=="$0"?`<span class="money">${money(j.price)}</span>`:""}
         ${bal>0?`<span class="badge b-${ps}">${money(bal)} due</span>`:""}
-        ${j.signature?`<span class="badge b-completed">✍ Signed</span>`:""}
       </div>
       <div class="who">👤 ${esc(c.name)}${c.phone?` · <a href="tel:${esc(cleanNum(c.phone))}">${esc(fmtPhone(c.phone))}</a>`:""}${addr1(c)?` · 📍 <a href="${mapsUrl(c)}" target="_blank" rel="noopener">${esc(addrFull(c))}</a>`:""}</div>
       ${j.vehicle?`<div class="who" style="color:var(--faint)">🚗 ${esc(j.vehicle)}</div>`:""}
@@ -1345,7 +1334,6 @@ function jobLine(j){
   return `<div class="jobline" data-jl="${j.id}">
     <div class="jl-date">${fmtDateShort(j.date)}<br><span class="sub" style="font-weight:600">${fmtTime(j.time)||""}</span></div>
     <div class="jl-svc">${esc(j.service)}<small>${money(j.price)} · ${st.label}${j.vehicle?" · 🚗 "+esc(j.vehicle):""}</small></div>
-    ${j.signature?`<span class="badge b-completed">✍ Signed</span>`:""}
     ${j.status!=="completed"?"":bal>0?`<span class="money owe">${money(bal)} due</span>`:`<span class="badge b-paid">paid</span>`}
   </div>`;
 }
@@ -1431,8 +1419,7 @@ function openJob(id,focusPay,presetCust){
   const c=cid?custById(cid):null;
   $("#job-hsub").textContent=c?(c.name+(addrFull(c)?" · "+addrFull(c):"")):"";
   $("#job-delete").style.display=j?"inline-block":"none";
-  $("#job-text").style.display=(c&&c.phone)?"inline-block":"none";
-  $("#job-quote").style.display=j?"inline-block":"none";
+  $("#job-confirm").style.display=(j&&c&&c.phone)?"inline-block":"none"; // needs a saved job and a number to text
   $("#job-body").innerHTML=jobForm(j,cid);
   bindJobForm();
   $("#job-overlay").classList.add("show");
@@ -1543,106 +1530,39 @@ $("#job-close").onclick=closeJob;
 $("#job-delete").onclick=()=>{if(!editJob)return;if(!confirm("Delete this job? This can't be undone."))return;
   db.jobs=db.jobs.filter(x=>x.id!==editJob);save();dismissJob();
   if($("#cust-overlay").classList.contains("show")&&editCust)openCust(editCust);render();toast("Job deleted");};
-$("#job-text").onclick=()=>{const data=gatherJob();const c=custById(data.customerId);if(c)openSms(c,Object.assign({},data));};
 $("#job-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#job-overlay")))closeJob();});
-$("#job-quote").onclick=()=>{if(editJob)openQuote(editJob);};
+$("#job-confirm").onclick=()=>{if(editJob)sendConfirmLink(editJob);};
 
-/* ---------------- Quote sheet / Accept & Sign ---------------- */
-function openQuote(id){
-  const j=db.jobs.find(x=>x.id===id); if(!j)return;
-  const cust0=custById(j.customerId)||{name:"",street:"",phone:""}, biz0=db.settings.business;
-  const foot=j.signature
-    ? `<div style="text-align:center"><img src="${esc(j.signature)}" alt="signature" style="max-height:90px;max-width:100%">
-         <div style="color:var(--muted);font-size:12.5px;margin-top:6px">Signed ${esc(fmtDateShort(localISO(new Date(j.signedAt||Date.now()))))}</div>
-         <button class="btn" id="quote-email" style="width:100%;justify-content:center;margin-top:12px">📧 Email the signed copy</button></div>`
-    : `<button class="btn btn-primary" id="quote-accept" style="width:100%;justify-content:center;padding:14px;font-size:15px">Accept &amp; Sign</button>`;
-  $("#quote-modal").innerHTML=`
-    <div class="modal-head" style="justify-content:flex-start"><button class="x" id="quote-back" style="border-radius:50%">&lsaquo;</button></div>
-    <div class="modal-body" style="padding:22px;text-align:center">
-      <div style="font-size:36px;font-weight:800">${money2(j.price)}</div>
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700">Total for this detail</div>
-      <div style="font-weight:600;margin-top:8px">${esc(j.vehicle||"Vehicle not specified")}</div>
-      <div style="color:var(--faint);font-size:12px">Due on completion</div>
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Prepared for</div>
-      <div style="text-align:left;margin-top:6px;font-weight:700;font-size:14.5px">${esc(cust0.name||"—")}${cust0.phone?`<span style="font-weight:600;color:var(--muted)"> · ${esc(fmtPhone(cust0.phone))}</span>`:""}</div>
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Services</div>
-      <div style="display:flex;gap:12px;text-align:left;margin:8px 0 4px;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div style="font-weight:700;font-size:14.5px">${esc(j.service)}</div>
-          ${j.notes?`<div class="qnotes">${esc(j.notes)}</div>`:""}
-        </div>
-        <div style="font-weight:700;white-space:nowrap">${money2(j.price)}</div>
-      </div>
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Appointment</div>
-      <div style="display:flex;justify-content:space-between;text-align:left;margin:8px 0 4px;font-weight:700;font-size:14.5px">
-        <div>${esc(fmtDate(j.date))}${j.time?` · ${esc(fmtTime(j.time))}`:""}</div>
-        <div style="font-weight:600;color:var(--muted)">${esc(cust0.street||"")}</div>
-      </div>
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Terms</div>
-      <div class="qnotes" style="text-align:left;margin-top:6px">Price covers the services listed above for the vehicle named above.
-        Heavy soiling, pet hair, stains or paint defects beyond a normal detail may need extra time — ${esc(biz0.name)} will quote
-        that before doing the work. Rescheduling is free with 24 hours’ notice. Payment is due when the detail is finished.</div>
-      <div id="quote-foot">${foot}</div>
-    </div>`;
-  $("#quote-back").onclick=closeQuote;
-  const acc=$("#quote-accept"); if(acc)acc.onclick=()=>signPad(id);
-  const em=$("#quote-email"); if(em)em.onclick=()=>emailSignedContract(id);
-  $("#quote-overlay").classList.add("show");
+/* ---------------- Client confirmation ----------------
+   The booking details ride in the link itself, base64url-encoded, so the hosted page needs
+   no server and no database. Keep the payload keys short — a long URL gets mangled by some
+   SMS apps. `ph` is the BUSINESS phone: the client's Agree opens a text back to Igor, which
+   is his receipt. */
+function confirmLink(id){
+  const j=db.jobs.find(x=>x.id===id); if(!j)return null;
+  const biz=db.settings.business||{};
+  const bizPhone=cleanNum(biz.phone);
+  if(!bizPhone){toast("Add your business phone in Settings first","err");return null;}
+  const c=custById(j.customerId);
+  const payload={b:biz.name||"",ph:bizPhone,n:firstName(c?c.name:""),
+    s:j.service,v:j.vehicle||"",dt:j.date,t:j.time||"",p:+j.price||0,
+    a:(c&&c.street)||"",e:(biz.notify||"")};
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  return "https://reflex08.github.io/banana-detailing/confirm.html?d="+b64;
 }
-function closeQuote(){$("#quote-overlay").classList.remove("show");}
-/* A single offline HTML file cannot send mail by itself — there is no server to send it.
-   So hand the whole signed contract to whatever mail app the device already has, prefilled
-   and addressed; the owner just presses Send. Settings → Business info changes the address.
-   ponytail: mailto, not SMTP. Swap in a form service only if he wants it to send unattended. */
-function emailSignedContract(id){
+/* The client confirms, not Igor — so this just hands the link to his messages app. */
+function sendConfirmLink(id){
   const j=db.jobs.find(x=>x.id===id); if(!j)return;
-  const to=(db.settings.business.notify||"").trim();
-  if(!to){toast("Add a confirmation email in Settings first","err");return;}
-  const c=custById(j.customerId)||{name:"(no customer)",phone:"",street:""};
-  const b=db.settings.business;
-  const body=[
-    `${b.name} — signed detailing contract`,"",
-    `Customer:    ${c.name}`,
-    `Phone:       ${fmtPhone(c.phone)||"—"}`,
-    `Address:     ${c.street||"—"}`,
-    `Vehicle:     ${j.vehicle||"—"}`,"",
-    `Service:     ${j.service}`,
-    `Appointment: ${fmtDate(j.date)}${j.time?" at "+fmtTime(j.time):""}`,
-    `Price:       ${money2(j.price)}`,
-    j.notes?`Notes:       ${j.notes}`:"","",
-    `Accepted and signed ${new Date(j.signedAt||Date.now()).toLocaleString()}.`,
-    `The signature image is stored in the CRM against this job.`,
-  ].filter(l=>l!==""||true).join("\n");
-  const subj=`Signed — ${c.name} · ${j.service} · ${fmtDateShort(j.date)}`;
-  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);
-}
-$("#quote-overlay").addEventListener("click",e=>{if(e.target===$("#quote-overlay"))closeQuote();});
-function signPad(id){
-  $("#quote-foot").innerHTML=`
-    <canvas id="sig-pad"></canvas>
-    <div class="hint" style="text-align:center">Sign with your finger</div>
-    <div style="display:flex;gap:10px;margin-top:10px">
-      <button class="btn btn-ghost" id="sig-clear" style="flex:1;justify-content:center">Clear</button>
-      <button class="btn btn-primary" id="sig-save" style="flex:1;justify-content:center">Save signature</button>
-    </div>`;
-  const cv=$("#sig-pad"),ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1;
-  cv.width=cv.offsetWidth*dpr; cv.height=cv.offsetHeight*dpr; ctx.scale(dpr,dpr);
-  ctx.strokeStyle="#fff"; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round";
-  let down=false,drew=false;
-  const pt=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
-  cv.addEventListener("pointerdown",e=>{down=true;cv.setPointerCapture(e.pointerId);const[x,y]=pt(e);ctx.beginPath();ctx.moveTo(x,y);});
-  cv.addEventListener("pointermove",e=>{if(!down)return;const[x,y]=pt(e);ctx.lineTo(x,y);ctx.stroke();drew=true;});
-  const end=()=>{down=false;};
-  cv.addEventListener("pointerup",end); cv.addEventListener("pointerleave",end);
-  $("#sig-clear").onclick=()=>{ctx.clearRect(0,0,cv.width,cv.height);drew=false;};
-  $("#sig-save").onclick=()=>{
-    if(!drew){toast("Sign first");return;}
-    const j=db.jobs.find(x=>x.id===id); if(!j)return;
-    j.signature=cv.toDataURL("image/png"); j.signedAt=Date.now();
-    const c=custById(j.customerId); if(c){c.log=c.log||[];c.log.push({t:Date.now(),m:"✍ Signed & accepted · "+money(j.price)});}
-    save(); toast("Signed ✓ — opening the confirmation email","ok"); openQuote(id); render();
-    setTimeout(()=>emailSignedContract(id),400); // let the sheet repaint first
-  };
+  const c=custById(j.customerId), to=cleanNum(c&&c.phone);
+  if(!to){toast("No phone number on file for this customer","err");return;}
+  const link=confirmLink(id); if(!link)return;
+  const body=`Hi ${firstName(c.name)} — please confirm your ${j.service}`+
+    `${j.vehicle?` on the ${j.vehicle}`:""} on ${fmtDate(j.date,{weekday:"long",month:"long",day:"numeric"})}`+
+    `${j.time?` at ${fmtTime(j.time)}`:""} for ${money2(j.price)}. Confirm here: ${link}`;
+  if(c){c.log=c.log||[];c.log.push({t:Date.now(),m:"📋 Confirmation link texted"});save();}
+  window.location.href="sms:"+to+"?&body="+encodeURIComponent(body);
+  toast("Messages opened — press send there","ok");
 }
 
 /* ---------------- Texting ---------------- */
@@ -1709,7 +1629,7 @@ $("#add-job").onclick=()=>openJob(null);
 $("#fab-add").onclick=()=>openJob(null);
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"&&$("#drawer").classList.contains("open")){drawer(false);return;}
-  if(e.key==="Escape"){closeQuote();closePaste();closeSms();closeJob();closeCust();closeQuick();return;}
+  if(e.key==="Escape"){closePaste();closeSms();closeJob();closeCust();closeQuick();return;}
   // Ctrl/⌘+Enter saves whichever editor is open — job takes priority since it can stack over the customer modal
   if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){
     if($("#job-overlay").classList.contains("show")){e.preventDefault();saveJob();}
