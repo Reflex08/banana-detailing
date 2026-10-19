@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Banana CRM">
 <meta name="theme-color" content="#07080a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Banana Detailing — CRM</title>
 <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%2307080a"/><text x="32" y="46" font-family="Georgia,serif" font-size="40" font-weight="bold" text-anchor="middle" fill="%23f2c53d">B</text></svg>'>
 <style>
@@ -463,7 +465,7 @@
 <script>
 "use strict";
 /* =========================================================
-   Banana Detailing CRM — single-file app for home-service businesses
+   Banana Detailing CRM — single-file app for a car detailing business
    Data persists in this browser (localStorage). Back up regularly.
    ========================================================= */
 
@@ -1428,6 +1430,14 @@ function openJob(id,focusPay,presetCust){
   $("#job-overlay").classList.add("show");
   setTimeout(()=>{if(focusPay){const p=$("#jf-collected");if(p){p.focus();p.select();}}else if(!j){const sel=$("#jf-cust");if(sel&&!cid)sel.focus();}},50);
 }
+/* Repeat customers arrive in the same car, so a new job starts with whatever vehicle they
+   were last seen in. Only a default — it is a plain field and overtypes freely. */
+function lastVehicle(cid){
+  if(!cid)return "";
+  const prev=db.jobs.filter(x=>x.customerId===+cid&&x.vehicle)
+    .sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.id-a.id)[0];
+  return prev?prev.vehicle:"";
+}
 function jobForm(j,cid){
   const custOpts=`<option value="">— choose customer —</option>`+db.customers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${cid===c.id?"selected":""}>${esc(c.name)}${c.city?" — "+esc(c.city):""}</option>`).join("");
   const svcOpts=db.settings.services.map(s=>`<option value="${esc(s.name)}" data-price="${s.price}" ${j&&j.service===s.name?"selected":""}>${esc(s.name)}</option>`).join("")
@@ -1460,7 +1470,7 @@ function jobForm(j,cid){
     </div>
     <div id="jf-balhint" class="hint"></div>
     <div class="grid2">
-      <div class="field"><label>🚗 Vehicle</label><input id="jf-vehicle" placeholder="2019 Honda Civic — black" value="${j?esc(j.vehicle||""):""}"></div>
+      <div class="field"><label>🚗 Vehicle</label><input id="jf-vehicle" placeholder="2019 Honda Civic — black" value="${esc(j?(j.vehicle||""):lastVehicle(cid))}"></div>
       <div class="field"><label>Pay method</label><select id="jf-paymethod">${payOpts}</select></div>
     </div>`;
 }
@@ -2015,12 +2025,11 @@ function quickParseLine(line){
     else{m=eat(/\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}(?:st|nd|rd|th)?|\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/i);
       if(m){const d=parseLooseDate(m[1]);if(d){out.date=d;out.job=true;out.dateGiven=true;}}}
   }
-  if(/\b(did|done|finished|completed|washed|cleaned|logged|had)\b/i.test(s)){out.job=true;out.past=true;
-    s=s.replace(/\b(did|done|finished|completed|washed|cleaned|logged|had)\b/ig," ");}
+  if(/\b(did|done|finished|completed|cleaned|logged|had)\b/i.test(s)){out.job=true;out.past=true;
+    s=s.replace(/\b(did|done|finished|completed|cleaned|logged|had)\b/ig," ");}
   if(/\b(scheduled|booked)\b/i.test(s)){out.job=true;
     s=s.replace(/\b(scheduled|booked)\b/ig," ");}
-  if(eat(/\bexterior\b/i))out.notes="exterior"; else if(eat(/\binterior\b/i))out.notes="interior";
-  // Each comma/"and" chunk can carry its own service + price: "Judy today 249 windows, 149 gutters" = 2 jobs.
+  // Each comma/"and" chunk can carry its own service + price: "Judy today 250 full detail, 70 engine bay" = 2 jobs.
   const rests=[];
   for(const seg of s.split(/[,;&]+|\band\b|\bplus\b/i)){
     let t=seg,price=0,paid=false,service="";
