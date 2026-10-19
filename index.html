@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Banana CRM">
+<meta name="theme-color" content="#07080a">
+<title>Banana Detailing — CRM</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%2307080a"/><text x="32" y="46" font-family="Georgia,serif" font-size="40" font-weight="bold" text-anchor="middle" fill="%23f2c53d">B</text></svg>'>
+<style>
+  :root{
+    color-scheme:dark;
+    /* Flyra palette: near-black ground, hairline-bordered dark cards, cyan-blue accent, purple chart */
+    --bg0:#07080a; --bg1:#07080a;
+    --panel:#121319; --panel2:#0d0e12;
+    --ink:#f5f6f8; --muted:#9aa1ab; --faint:#6b7280; --line:rgba(255,255,255,.08);
+    --brand:#f2c53d; --brand-d:#caa025; --brand-soft:rgba(242,197,61,.14); --on-aqua:#2b2104;
+    --green:#34d399; --green-soft:rgba(52,211,153,.12); --amber:#fbbf24; --amber-soft:rgba(251,191,36,.12);
+    --red:#f98080; --red-soft:rgba(248,113,113,.12); --purple:#a78bfa; --purple-soft:rgba(139,92,246,.14);
+    --cyan:#5ac8fa; --cyan-soft:rgba(90,200,250,.12);
+    --gold:#f5a623; --gold-soft:rgba(245,166,35,.14);
+    --gray-soft:rgba(255,255,255,.07); --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    --shadow-lg:0 18px 50px rgba(0,0,0,.6);
+    --field-bg:rgba(255,255,255,.04); --hover:rgba(255,255,255,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg0);color:var(--ink);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;
+    background-image:repeating-linear-gradient(115deg,rgba(255,255,255,.025) 0 1px,transparent 1px 56px),repeating-linear-gradient(25deg,rgba(255,255,255,.02) 0 1px,transparent 1px 56px);
+    background-attachment:fixed}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink)}
+  a{color:var(--brand);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .mono{font-variant-numeric:tabular-nums}
+
+  /* ---------- Layout (Flyra: no sidebar/topbar/tabbar — floating chrome only) ---------- */
+  /* Wordmark matches sevasservices.com — serif logotype, gold accent */
+  .brand{padding:22px 20px 18px;font-family:Georgia,"Times New Roman",serif;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:.01em;line-height:1.15}
+  .brand em{color:var(--brand);font-style:normal}
+  .brand small{display:block;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:9px;font-weight:700;color:var(--faint);letter-spacing:.26em;margin-top:6px;text-transform:uppercase}
+  .nav{padding:8px 12px;flex:1;overflow:auto}
+  .nav .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);padding:14px 12px 6px;font-weight:700}
+  .nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;color:var(--muted);
+    font-weight:600;margin-bottom:2px;cursor:pointer;font-size:14px}
+  .nav a:hover{background:var(--hover);color:var(--ink);text-decoration:none}
+  .nav a.active{background:rgba(255,255,255,.08);color:var(--ink);box-shadow:inset 3px 0 0 var(--brand)}
+  .nav a .ic{width:18px;text-align:center;font-size:15px}
+  .nav a .count{margin-left:auto;background:rgba(255,255,255,.12);border-radius:20px;padding:1px 8px;font-size:11.5px;font-weight:700}
+  .nav a.active .count{background:rgba(0,0,0,.35)}
+  .helper-status{margin:0 12px 8px;padding:9px 12px;border-radius:9px;background:var(--panel2);font-size:12px;
+    display:flex;align-items:center;gap:8px;color:var(--muted);cursor:default}
+  .helper-status .led{width:9px;height:9px;border-radius:50%;background:#6b7385;flex-shrink:0}
+  .helper-status.on .led{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+
+  .search{flex:1;max-width:380px;position:relative}
+  .search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:10px;background:var(--field-bg);color:var(--ink);outline:none}
+  .search input:focus{border-color:var(--brand);background:rgba(7,8,10,.82);box-shadow:0 0 0 3px var(--brand-soft)}
+  .search .mag{position:absolute;left:11px;top:9px;color:var(--faint)}
+  .content{padding:calc(var(--safetop,env(safe-area-inset-top,0px)) + 66px) 18px 110px;max-width:1080px;margin:0 auto}
+
+  /* ---------- Floating chrome (hamburger, drawer, FAB) ---------- */
+  .fcir{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:rgba(13,14,18,.85);
+    backdrop-filter:blur(8px);color:var(--ink);font-size:17px;display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow);flex-shrink:0}
+  .fpill{position:relative;height:42px;border-radius:999px;border:1px solid var(--line);background:rgba(13,14,18,.85);backdrop-filter:blur(8px);
+    color:var(--ink);font-weight:700;font-size:13px;padding:0 16px;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+  .fpill select{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+  #menu-btn{position:fixed;top:calc(var(--safetop,env(safe-area-inset-top,0px)) + 12px);left:14px;z-index:45}
+  .drawer{position:fixed;top:0;left:0;bottom:0;width:280px;background:#0d0e12;border-right:1px solid var(--line);
+    z-index:60;transform:translateX(-100%);transition:transform .22s;display:flex;flex-direction:column;
+    padding:calc(var(--safetop,env(safe-area-inset-top,0px)) + 10px) 0 14px}
+  .drawer.open{transform:none}
+  .drawer-veil{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:55;display:none}
+  .drawer-veil.show{display:block}
+  .drawer-actions{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+  .drawer-actions .btn{width:100%;justify-content:center}
+  .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;
+    border:0;background:#7cc4fa;color:#06283d;font-size:26px;display:inline-flex;align-items:center;justify-content:center;
+    z-index:44;box-shadow:var(--shadow-lg)}
+  .no-fab .fab{display:none}
+
+  /* ---------- Buttons ---------- */
+  .btn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:9px 15px;font-weight:700;color:var(--ink);font-size:13.5px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+  .btn:hover{background:var(--hover)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.sm{padding:6px 11px;font-size:12.5px;border-radius:999px}
+  .btn-primary{background:#7cc4fa;border-color:transparent;color:#06283d}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-green{background:var(--green);border-color:transparent;color:#052e1e}
+  .btn-green:hover{filter:brightness(1.08)}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  .btn-ghost:hover{background:var(--gray-soft);color:var(--ink)}
+
+  /* ---------- Hero greeting ---------- */
+  .hero-card{background:linear-gradient(135deg,rgba(42,184,232,.10),rgba(245,166,35,.07)),var(--panel);
+    border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:18px;box-shadow:var(--shadow)}
+  .hero-card .hg{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+  .hero-card .hline{font-family:Georgia,"Times New Roman",serif;font-size:21px;line-height:1.4;color:var(--ink)}
+  .hero-card .hline b{color:var(--gold);font-weight:700}
+  /* Flyra greeting — naked block, no card */
+  .flyra-hero{margin:4px 0 22px}
+  .fh-greet{font-size:30px;font-weight:700;font-style:italic;letter-spacing:-.5px;line-height:1.15}
+  .fh-name{font-size:30px;font-weight:700;font-style:italic;color:var(--cyan);line-height:1.15}
+  .fh-sub{color:var(--faint);font-style:italic;margin-top:3px;font-size:14px}
+  .fh-stat{margin-top:10px;color:var(--muted);font-size:13.5px}
+  .fh-stat b{color:var(--ink)}
+  .fh-big{font-size:32px;font-weight:800;font-style:italic;font-variant-numeric:tabular-nums;letter-spacing:-.5px;margin:2px 0 6px}
+  .ftab{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13.5px;padding:7px 14px;border-radius:999px}
+  .ftab.active{background:transparent;color:var(--purple)}
+  .lb-row{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid var(--line)}
+  .lb-rank{color:var(--muted);font-size:12px;width:18px;flex-shrink:0}
+  .lb-comm{color:var(--cyan);font-weight:800;margin-left:auto;font-variant-numeric:tabular-nums}
+
+  /* ---------- Stat cards ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:14px;margin-bottom:22px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stat .ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
+  .stat .label{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+  .stat .num{font-size:27px;font-weight:800;margin-top:3px;letter-spacing:-.5px}
+  .stat .meta{font-size:12px;color:var(--faint);font-weight:600;margin-top:3px}
+  .stat.link{cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s}
+  .stat.link:hover{border-color:rgba(255,255,255,.32);transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.28)}
+  .stat.link::after{content:"›";position:absolute;top:14px;right:16px;color:var(--faint);font-size:18px;opacity:0;transition:opacity .12s}
+  .stat.link:hover::after{opacity:1}
+  .ic.blue{background:var(--brand-soft);color:var(--brand)} .ic.green{background:var(--green-soft);color:var(--green)}
+  .ic.amber{background:var(--amber-soft);color:var(--amber)} .ic.red{background:var(--red-soft);color:var(--red)}
+  .ic.purple{background:var(--purple-soft);color:var(--purple)} .ic.cyan{background:var(--cyan-soft);color:var(--cyan)}
+
+  /* ---------- Panels ---------- */
+  .grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:18px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  details.money-details summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+    padding:15px 18px;font-size:14.5px;font-weight:800;user-select:none}
+  details.money-details summary::-webkit-details-marker{display:none}
+  details.money-details summary .chev{color:var(--muted);transition:transform .15s}
+  details.money-details[open] summary .chev{transform:rotate(90deg)}
+  details.more-fields{margin-top:6px}
+  details.more-fields summary{list-style:none;cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:700;
+    padding:8px 0;user-select:none}
+  details.more-fields summary::-webkit-details-marker{display:none}
+  details.more-fields summary::before{content:"▸ ";color:var(--brand)}
+  details.more-fields[open] summary::before{content:"▾ "}
+  .panel h2{margin:0;padding:15px 18px;font-size:15px;font-weight:800;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
+  .panel h2 .pill{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--gray-soft);border-radius:20px;padding:2px 9px}
+  .panel h2 .spacer{flex:1}
+  .panel-pad{padding:18px}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .toolbar select,.toolbar input{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--field-bg);color:var(--ink);font-weight:600}
+  .seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .seg button{border:0;background:transparent;padding:8px 15px;font-weight:700;color:var(--muted);font-size:13px;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button.active{background:rgba(255,255,255,.1);color:var(--ink)}
+  .spacer{flex:1}
+
+  /* ---------- Tables ---------- */
+  table{width:100%;border-collapse:collapse}
+  thead th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);
+    padding:11px 16px;border-bottom:1px solid var(--line);font-weight:700;background:var(--panel2)}
+  thead th.r{text-align:right}
+  tbody td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody td.r{text-align:right}
+  tbody tr.clickable{cursor:pointer}
+  tbody tr.clickable:hover{background:rgba(255,255,255,.05)}
+  tbody tr:last-child td{border-bottom:0}
+  .name-cell{display:flex;align-items:center;gap:11px}
+  .avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#0b0c10;font-size:13px}
+  .nm{font-weight:700}
+  .sub{color:var(--muted);font-size:12.5px}
+  .tag{display:inline-block;background:var(--gray-soft);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:700;margin:1px 3px 1px 0}
+  .badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+  .badge .d{width:7px;height:7px;border-radius:50%}
+  .b-lead{background:var(--amber-soft);color:var(--amber)} .b-active{background:var(--green-soft);color:var(--green)}
+  .b-inactive{background:var(--gray-soft);color:var(--muted)}
+  .b-scheduled{background:var(--brand-soft);color:var(--brand)} .b-completed{background:var(--green-soft);color:var(--green)}
+  .b-cancelled{background:var(--red-soft);color:var(--red)}
+  .b-paid{background:var(--green-soft);color:var(--green)} .b-unpaid{background:var(--red-soft);color:var(--red)} .b-partial{background:var(--amber-soft);color:var(--amber)}
+  .money{font-weight:700;font-variant-numeric:tabular-nums}
+  .money.pos{color:var(--green)} .money.owe{color:var(--red)}
+  .empty{padding:46px 20px;text-align:center;color:var(--muted)}
+  .empty .big{font-size:38px;margin-bottom:8px}
+  .empty .btn{margin-top:14px}
+
+  /* ---------- Customers leads list ---------- */
+  .lead-grp{margin-bottom:18px}
+  .lg-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
+  .lg-bar{width:3px;height:30px;border-radius:3px;flex-shrink:0}
+  .lg-label{font-weight:800;font-size:13.5px}
+  .lg-count{color:var(--faint);font-size:11.5px;font-weight:600}
+  .lead-card{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow)}
+  .lead-card:hover{border-color:rgba(255,255,255,.22)}
+  .lc-mid{flex:1;min-width:0}
+  .lc-right{display:flex;align-items:center;gap:9px;flex-shrink:0}
+  .lchip{background:rgba(86,184,245,.16);color:#7cc4fa;border-radius:999px;padding:3px 10px;font-weight:800;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .lead-total{text-align:left;font-style:italic;color:var(--faint);font-size:12.5px;margin:14px 0 4px;font-weight:600}
+  .lx-title{position:relative;font-size:30px;font-weight:800;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+  .lx-title select{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+  .lx-chev{color:var(--muted);font-size:18px}
+  .lx-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .lg-total{margin-left:auto;color:#7cc4fa;font-weight:800}
+  .ph-pill{display:inline-block;background:#0d0e12;border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px}
+  .lc-arrow{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#0d0e12;color:var(--muted);flex-shrink:0;font-size:14px}
+  .lc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .lc-tags .lchip{padding:2px 8px;font-size:11px}
+  .cust-foot{display:flex;align-items:center;gap:8px;margin-top:14px}
+  .cust-foot .lead-total{margin:0;flex:1}
+  .cust-foot .fpill,.cust-foot .fcir{height:32px;font-size:12px;padding:0 12px}
+  .cust-foot .fcir{width:32px;padding:0}
+
+  /* ---------- Schedule agenda ---------- */
+  .agenda-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px;font-weight:800;font-size:14px}
+  .agenda-head .cnt{font-size:12px;color:var(--muted);font-weight:700;background:var(--gray-soft);border-radius:20px;padding:1px 9px}
+  .agenda-head.overdue{color:var(--red)}
+  /* ---------- Schedule day timeline ---------- */
+  .tl-head{display:flex;align-items:flex-end;gap:10px;justify-content:flex-start;text-align:left;margin:2px 0 4px}
+  .tl-head .nb{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tlh-wrap{flex:1;min-width:0}
+  .tlh-dow{color:var(--muted);font-size:14px;font-weight:600;text-align:left;font-style:italic}
+  .tlh-date{font-size:26px;font-weight:800;text-align:left;letter-spacing:-.3px}
+  .tl-rev{text-align:left;color:var(--muted);font-size:13px;margin:4px 0 0;font-style:italic}
+  .tl-row{display:flex;gap:10px;border-top:1px solid var(--line);min-height:54px}
+  .tl-hour{width:52px;flex-shrink:0;color:var(--faint);font-size:11px;font-weight:700;padding-top:8px;text-align:right}
+  .tl-slot{flex:1;display:flex;flex-wrap:wrap;gap:8px;padding:8px 0}
+  .tl-card{background:linear-gradient(135deg,#1c3f66,#2a6ba8);border-radius:14px;padding:10px 12px;min-width:150px;max-width:100%;cursor:pointer;flex:1 1 150px}
+  .tl-card.done{background:linear-gradient(135deg,#14532d,#166534)}
+  .tl-card .n{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tl-card .s{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:1px}
+  .tl-card .tr{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:1px}
+  .tl-card .p{font-weight:800;font-size:14px;margin-top:6px}
+  .jobcard{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:13px 16px;box-shadow:var(--shadow);margin-bottom:10px}
+  .jobcard:hover{border-color:rgba(255,255,255,.3)}
+  .jobcard .time{width:84px;flex-shrink:0;text-align:center}
+  .jobcard .time .t{font-weight:800;font-size:15px} .jobcard .time .d{font-size:11.5px;color:var(--muted);font-weight:700}
+  .jobcard .bar{width:4px;align-self:stretch;border-radius:4px;background:var(--brand);flex-shrink:0}
+  .jobcard .body{flex:1;min-width:0}
+  .jobcard .body .l1{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .jobcard .body .svc{font-weight:800}
+  .jobcard .body .who{color:var(--muted);font-size:13px;margin-top:2px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .jobcard .actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:230px}
+  .recur{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--purple);background:var(--purple-soft);border-radius:20px;padding:2px 9px}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(2,8,16,.65);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:34px 16px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .overlay.show{display:flex}
+  body:has(.overlay.show){overflow:hidden} /* page behind a modal must not scroll */
+  #cust-overlay{z-index:50} #job-overlay{z-index:60} #sms-overlay,#bulk-overlay,#paste-overlay,#qa-overlay{z-index:70}
+  #quote-overlay{z-index:80}
+  .modal{background:#15161c;border:1px solid var(--line);border-radius:20px;width:100%;max-width:640px;box-shadow:var(--shadow-lg);margin:auto 0}
+  .modal.lg{max-width:760px} .modal.sm{max-width:520px}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .modal-head h3{margin:0;font-size:18px;font-weight:800}
+  .modal-head .hsub{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:2px}
+  .x{border:0;background:transparent;font-size:24px;color:var(--faint);line-height:1;padding:2px 7px;border-radius:8px}
+  .x:hover{background:var(--hover);color:var(--ink)}
+  .modal-body{padding:20px 22px;max-height:70vh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-weight:700;margin-bottom:5px;font-size:12.5px}
+  .field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;outline:none;background:var(--field-bg);color:var(--ink)}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .field textarea{resize:vertical;min-height:62px}
+  .field .pre{position:relative}
+  .field .pre input{padding-left:26px} .field .pre .sym{position:absolute;left:11px;top:9px;color:var(--muted);font-weight:700}
+  .sec{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:800;margin:20px 0 11px;display:flex;align-items:center;gap:8px}
+  .sec::after{content:"";flex:1;height:1px;background:var(--line)}
+  .modal-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .modal-foot .del{margin-right:auto;color:var(--red);border-color:rgba(248,113,113,.35);background:var(--red-soft)}
+  .modal-foot .del:hover{background:rgba(248,113,113,.22)}
+  .hint{color:var(--muted);font-size:12px;margin-top:5px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .chip{background:var(--brand-soft);color:var(--brand);border:0;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:700}
+  .chip:hover{background:rgba(86,184,245,.25)}
+
+  /* quote sheet */
+  /* Schedule "7 days" — ported from Flyra. Horizontal strip of day columns;
+     minmax(132px,1fr) keeps columns readable on a phone and lets the wrap scroll. */
+  .week-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0 4px}
+  .week-grid{display:grid;grid-template-columns:repeat(7,minmax(132px,1fr));gap:10px}
+  .week-col{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;min-height:120px;cursor:pointer}
+  .week-col.today{border-color:var(--brand)}
+  .week-col.sel{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+  .week-col-head{font-weight:800;font-size:12.5px;color:var(--muted);text-align:center;margin-bottom:8px;line-height:1.3}
+  .week-col.today .week-col-head{color:var(--brand)}
+  .week-col-body{display:flex;flex-direction:column;gap:6px}
+  .week-card{background:linear-gradient(135deg,#1c3f66,#2a6ba8);border-radius:10px;padding:7px 9px;cursor:pointer}
+  .week-card.done{background:linear-gradient(135deg,#14532d,#166534)}
+  .week-card .wt{font-size:10px;color:rgba(255,255,255,.7);font-weight:700}
+  .week-card .wn{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .week-card .wp{font-size:11.5px;font-weight:800;margin-top:2px}
+  .week-empty{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0;font-style:italic}
+  .qgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 16px}
+  .qm{background:#0d0e12;border:1px solid var(--line);border-radius:11px;padding:10px 6px;text-align:center;font-weight:700;font-size:12.5px;color:var(--ink)}
+  .qm small{display:block;font-size:10px;color:var(--faint);font-weight:600}
+  .qm-hit{border-color:#34d399;color:#34d399}
+  .qm-hit .vis{display:block;font-size:8.5px;letter-spacing:.08em;font-weight:800;margin-bottom:2px}
+  .qnotes{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);font-size:13px;margin-top:3px}
+  #sig-pad{width:100%;height:180px;background:#0d0e12;border:1px solid var(--line);border-radius:14px;touch-action:none;display:block}
+
+  /* customer detail bits */
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13.5px}
+  .kv .k{color:var(--muted);font-weight:700} .kv .v{font-weight:600}
+  .totbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:4px 0 4px}
+  .totbox{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;text-align:center}
+  .totbox .l{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700}
+  .totbox .n{font-size:20px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .jobline{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer}
+  .jobline:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.3)}
+  .jobline .jl-date{width:74px;flex-shrink:0;font-weight:700;font-size:12.5px}
+  .jobline .jl-svc{flex:1;min-width:0;font-weight:700}
+  .jobline .jl-svc small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+
+  .log-add{display:flex;gap:8px;margin-bottom:12px}
+  .log-add input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--field-bg);color:var(--ink)}
+  .log{list-style:none;margin:0;padding:0}
+  .log li{padding:9px 0;border-bottom:1px dashed var(--line);display:flex;gap:10px}
+  .log li:last-child{border-bottom:0}
+  .log .when{color:var(--faint);font-size:12px;white-space:nowrap;min-width:116px;font-weight:600}
+  .log .txt{flex:1} .log .rm{border:0;background:transparent;color:var(--faint);cursor:pointer}
+  .log .rm:hover{color:var(--red)}
+
+  .note{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:12.5px;color:var(--muted)}
+  .note b{color:var(--ink)}
+  .counter{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600}
+  .tpl-row{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:11px;margin-bottom:10px}
+  .svc-row{display:flex;gap:9px;align-items:center;margin-bottom:8px}
+  .svc-row input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field-bg);color:var(--ink)}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#15161c;color:var(--ink);
+    border:1px solid var(--line);padding:12px 20px;border-radius:11px;opacity:0;transition:.25s;z-index:200;font-weight:700;box-shadow:var(--shadow-lg);max-width:90vw}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#7f1d1d} .toast.ok{background:#0c633a}
+
+  /* ---------- Charts ---------- */
+  .adot{transition:filter .13s,r .13s}
+  .acol{cursor:default}
+  .acol:hover .adot{filter:brightness(1.2) drop-shadow(0 2px 7px rgba(139,92,246,.6))}
+  .chart-tip{position:fixed;z-index:150;background:#15161c;border:1px solid var(--line);border-radius:10px;
+    padding:8px 12px;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;
+    box-shadow:var(--shadow-lg);white-space:nowrap;line-height:1.35}
+  .chart-tip.show{opacity:1;transform:translateY(0)}
+  .chart-tip .tl{color:var(--muted);font-weight:700;font-size:11.5px;letter-spacing:.02em}
+  .chart-tip .tv{color:var(--green);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+
+  /* ---------- Mobile (phone / PWA) ---------- */
+  @media(max-width:860px){
+    .grid-2{grid-template-columns:1fr}.grid3{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}
+    /* top padding clears the Dynamic Island / status bar + floating ≡ */
+    .content{padding:calc(var(--safetop, env(safe-area-inset-top, 0px)) + 62px) 14px 110px}
+    .search{order:5;flex-basis:100%;max-width:none}
+    .panel{overflow-x:auto}
+    input,select,textarea{font-size:16px} /* 16px stops iOS zoom-on-focus */
+    /* Phone: ONE scroll container — the overlay scrolls the whole modal (inner scroll areas fight iOS momentum + the keyboard) */
+    .overlay{padding:calc(var(--safetop, env(safe-area-inset-top)) + 52px) 8px calc(env(safe-area-inset-bottom) + 40px);backdrop-filter:none}
+    .modal-body{max-height:none;overflow:visible}
+    .jobcard{flex-wrap:wrap}
+    .jobcard .actions{max-width:none}
+  }
+</style>
+</head>
+<body>
+<button class="fcir" id="menu-btn" aria-label="Menu">&#8801;</button>
+<div class="drawer-veil" id="drawer-veil"></div>
+<aside class="drawer" id="drawer">
+  <div class="brand"><div>Banana<em> Detailing</em><small>Car Detailing</small></div></div>
+  <nav class="nav" id="nav">
+    <a data-view="dashboard" class="active"><span class="ic">▦</span> Home</a>
+    <a data-view="schedule"><span class="ic">🗓️</span> Schedule <span class="count" id="c-sched">0</span></a>
+    <a data-view="customers"><span class="ic">👥</span> Leads <span class="count" id="c-cust">0</span></a>
+    <a data-view="settings"><span class="ic">⚙️</span> Settings</a>
+  </nav>
+  <div class="drawer-actions">
+    <button class="btn" id="quick-add" title="Say what happened — clients & jobs fill themselves out">✨ Quick add</button>
+    <button class="btn btn-primary" id="add-job">＋ New Job</button>
+  </div>
+  <div class="helper-status" id="backup-chip" title="Automatic backup status"><span class="led"></span><span id="backup-text">Auto-backup: off</span></div>
+  <div class="helper-status" id="sync-chip" title="Cloud sync between your PC and phone"><span class="led"></span><span id="sync-text">Cloud sync: off</span></div>
+</aside>
+
+<main class="main"><div class="content" id="content"></div></main>
+<button class="fab" id="fab-add" aria-label="New job">＋</button>
+
+<!-- Customer modal -->
+<div class="overlay" id="cust-overlay"><div class="modal lg">
+  <div class="modal-head"><div><h3 id="cust-title">New Customer</h3><div class="hsub" id="cust-hsub"></div></div><button class="x" id="cust-close">&times;</button></div>
+  <div class="modal-body" id="cust-body"></div>
+  <div class="modal-foot">
+    <button class="btn del" id="cust-delete" style="display:none">Delete</button>
+    <button class="btn" id="cust-text" style="display:none">💬 Text</button>
+    <button class="btn" id="cust-addjob" style="display:none">＋ New Job</button>
+    <button class="btn" id="cust-cancel">Cancel</button>
+    <button class="btn btn-primary" id="cust-save">Save Customer</button>
+  </div>
+</div></div>
+
+<!-- Job modal -->
+<div class="overlay" id="job-overlay"><div class="modal">
+  <div class="modal-head"><div><h3 id="job-title">New Job</h3><div class="hsub" id="job-hsub"></div></div><button class="x" id="job-close">&times;</button></div>
+  <div class="modal-body" id="job-body"></div>
+  <div class="modal-foot">
+    <button class="btn del" id="job-delete" style="display:none">Delete</button>
+    <button class="btn" id="job-text" style="display:none">💬 Remind</button>
+    <button class="btn" id="job-quote" style="display:none">✍ Quote</button>
+    <button class="btn" id="job-cancel">Cancel</button>
+    <button class="btn btn-primary" id="job-save">Save Job</button>
+  </div>
+</div></div>
+
+<!-- Single SMS modal -->
+<div class="overlay" id="sms-overlay"><div class="modal sm">
+  <div class="modal-head"><h3 id="sms-title">Send a text</h3><button class="x" id="sms-close">&times;</button></div>
+  <div class="modal-body">
+    <div class="field"><label>To</label><input id="sms-to" placeholder="+1 555 123 4567"></div>
+    <div class="field"><label>Template</label><select id="sms-template"></select></div>
+    <div class="field"><label>Message</label><textarea id="sms-body" style="min-height:110px"></textarea>
+      <div class="counter" id="sms-counter"></div><div class="chips" id="sms-vars"></div></div>
+    <div class="note" id="sms-note"></div>
+  </div>
+  <div class="modal-foot"><button class="btn" id="sms-cancel">Cancel</button><button class="btn btn-green" id="sms-send">Send</button></div>
+</div></div>
+
+<!-- Paste import modal -->
+<div class="overlay" id="paste-overlay"><div class="modal">
+  <div class="modal-head"><div><h3>Quick import — paste your client list</h3><div class="hsub">One client per line · keeps every detail</div></div><button class="x" id="paste-close">&times;</button></div>
+  <div class="modal-body">
+    <div class="note" style="margin-bottom:14px">
+      <b>Format — separate each field with a semicolon ( ; ):</b><br>
+      <span class="mono" style="font-weight:700">Name ; Address ; Phone ; Price ; Date done ; %Salesman ; Notes</span><br><br>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Service for these jobs</label><select id="paste-service"></select></div>
+      <div class="field"><label>Status</label><label style="font-weight:600;display:flex;gap:8px;align-items:center;padding:9px 0 0"><input type="checkbox" id="paste-completed" checked style="width:auto"> Mark each as completed &amp; paid</label></div>
+    </div>
+    <div class="field"><label>Paste your clients (one per line)</label>
+      <textarea id="paste-text" style="min-height:210px;font-family:monospace;font-size:13px" placeholder="Name;Address;Phone;Price$;Date;;"></textarea>
+      <div class="hint" id="paste-count"></div></div>
+  </div>
+  <div class="modal-foot"><button class="btn" id="paste-cancel">Cancel</button><button class="btn btn-primary" id="paste-import">Import all</button></div>
+</div></div>
+
+<!-- Quick add modal (✨ text → leads) -->
+<div class="overlay" id="qa-overlay"><div class="modal">
+  <div class="modal-head"><div><h3>✨ Quick add</h3><div class="hsub">Type it like a text message — clients &amp; jobs fill themselves out</div></div><button class="x" id="qa-close">&times;</button></div>
+  <div class="modal-body">
+    <div class="field"><label>One client or job per line — say it like you'd text a friend</label>
+      <textarea id="qa-text" style="min-height:88px"></textarea>
+      <div class="hint">Knows: today / tomorrow / weekdays / June 5 · "at 12" · "for 249" · full detail, interior, ceramic, wax… Past date = done &amp; paid, future = booked.</div></div>
+    <div class="field"><label>Add as</label><div class="seg" id="qa-status">
+      <button data-qs="lead" class="active">🌱 Lead</button><button data-qs="active">✅ Active client</button></div></div>
+    <div id="qa-preview"></div>
+    <div class="note" id="qa-note" style="display:none;margin-top:10px"></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn" id="qa-cancel">Cancel</button>
+    <button class="btn btn-primary" id="qa-add" disabled>Add</button>
+  </div>
+</div></div>
+<!-- Quote / Accept & Sign sheet -->
+<div class="overlay" id="quote-overlay"><div class="modal sm" id="quote-modal"></div></div>
+
+<input type="file" id="file-json" accept=".json" style="display:none">
+<input type="file" id="file-csv" accept=".csv" style="display:none">
+<div class="toast" id="toast"></div>
+<div class="chart-tip" id="chart-tip"></div>
+
+<script>
+"use strict";
+/* =========================================================
+   Banana Detailing CRM — single-file app for home-service businesses
+   Data persists in this browser (localStorage). Back up regularly.
+   ========================================================= */
+
+/* ---------------- Constants ---------------- */
+const KEY="banana.v1", OLDKEY="";
+const CUST_STATUS=[
+  {id:"lead",label:"Lead",cls:"b-lead",color:"#d97706"},
+  {id:"active",label:"Active",cls:"b-active",color:"#0f9d58"},
+  {id:"inactive",label:"Inactive",cls:"b-inactive",color:"#9aa1b2"},
+];
+const JOB_STATUS=[
+  {id:"scheduled",label:"Scheduled",cls:"b-scheduled"},
+  {id:"completed",label:"Completed",cls:"b-completed"},
+  {id:"cancelled",label:"Cancelled",cls:"b-cancelled"},
+];
+const PAY_METHODS=["Cash","Card","Check","Venmo","Zelle","Other"];
+const DEFAULT_SERVICES=[
+  {name:"Express Wash & Wax",price:60},{name:"Interior Detail",price:150},
+  {name:"Exterior Detail",price:140},{name:"Full Detail (In & Out)",price:250},
+  {name:"Paint Correction (1-Step)",price:400},{name:"Ceramic Coating",price:650},
+  {name:"Engine Bay Cleaning",price:70},{name:"Headlight Restoration",price:80},
+  {name:"Pet Hair Removal",price:60},{name:"Odor / Ozone Treatment",price:90},
+];
+const DEFAULT_TEMPLATES=[
+  {id:"t1",name:"Appointment reminder",body:"Hi {firstname}, this is {business}. Friendly reminder we're scheduled for your {service} on {date} at {time}. Reply C to confirm or R to reschedule. Thanks!"},
+  {id:"t2",name:"On our way",body:"Hi {firstname}, {business} here — we're on our way for your {service} and will arrive shortly. See you soon!"},
+  {id:"t3",name:"Job complete + balance",body:"Hi {firstname}, thanks for choosing {business}! Your {service} is complete. Balance due: {balance}. We appreciate your business — reviews are always welcome!"},
+  {id:"t4",name:"Re-book / it's been a while",body:"Hi {firstname}, it's been a while since your last {service} with {business}. Want us to get you back on the schedule? Reply YES and we'll set it up."},
+  {id:"t5",name:"Quote follow-up",body:"Hi {firstname}, following up on your {service} estimate from {business}. Happy to answer any questions or get you booked. Just let me know!"},
+  {id:"t6",name:"Review request",body:"Hi {firstname}, thanks for having us today! If you were happy with the work, a quick Google review would mean a lot. — Banana Detailing"},
+];
+const DEFAULT_SETTINGS=()=>({business:{name:"Banana Detailing",owner:"Igor",phone:"",email:"",notify:"koncurigor2008@gmail.com"},services:JSON.parse(JSON.stringify(DEFAULT_SERVICES)),templates:JSON.parse(JSON.stringify(DEFAULT_TEMPLATES))});
+
+/* ---------------- Storage + migration ---------------- */
+let db=load();
+function load(){
+  let r=null; try{r=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+  if(r&&Array.isArray(r.customers)){
+    // A db stored before the sample data existed is empty but real, so it would otherwise skip
+    // seed() forever and show a blank Schedule. `seeded` is what stops it coming back after the
+    // owner clears the samples -- that flag survives the wipe, the records do not.
+    if(!r.seeded&&!r.customers.length&&!(r.jobs||[]).length) return seed();
+    return normalize(r);
+  }
+  // migrate from old contacts-based CRM if present
+  let old=null; try{old=JSON.parse(localStorage.getItem(OLDKEY));}catch(e){}
+  if(old&&Array.isArray(old.contacts)){
+    const s=DEFAULT_SETTINGS();
+    if(Array.isArray(old.templates)&&old.templates.length) s.templates=old.templates;
+    const customers=old.contacts.map((c,i)=>({
+      id:i+1,name:c.name||"(no name)",phone:c.phone||"",email:c.email||"",
+      street:"",city:"",state:"",zip:"",
+      status:c.type==="client"?"active":(c.type==="lead"?"lead":"active"),
+      source:"",tags:c.tags||[],access:"",notes:c.notes||"",followup:c.followup||"",
+      log:c.log||[],created:c.created||Date.now()
+    }));
+    return normalize({customers,jobs:[],settings:s,seqC:customers.length+1,seqJ:1,migrated:true});
+  }
+  return seed();
+}
+function normalize(r){
+  if(!r.settings) r.settings=DEFAULT_SETTINGS();
+  const s=r.settings; const d=DEFAULT_SETTINGS();
+  if(!s.business) s.business=d.business;
+  if(!s.business.owner) s.business.owner=d.business.owner;
+  if(!Array.isArray(s.services)||!s.services.length) s.services=d.services;
+  if(!Array.isArray(s.templates)||!s.templates.length) s.templates=d.templates;
+  // backfill: installed DBs pre-dating the review template don't rerun DEFAULT_TEMPLATES seeding
+  if(Array.isArray(s.templates)&&!s.templates.some(t=>t&&t.name&&t.name.indexOf("Review")===0)){
+    const rt=d.templates.find(t=>t.name.indexOf("Review")===0);
+    if(rt) s.templates.push(Object.assign({},rt));
+  }
+  if(!Array.isArray(r.jobs)) r.jobs=[];
+  if(!r.seqC) r.seqC=Math.max(0,...r.customers.map(c=>c.id||0))+1;
+  if(!r.seqJ) r.seqJ=Math.max(0,...r.jobs.map(j=>j.id||0))+1;
+  return r;
+}
+function save(){db.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(db));scheduleBackup();scheduleSync();}
+/* A fresh install with an empty Schedule and a $0 dashboard looks broken rather than new,
+   so seed a week of sample work. Dates are relative to today, so it always reads as "this week".
+   Every record gets sample:true — Settings → Data → "Remove sample data" deletes exactly those
+   and nothing else, so the fake revenue can never blend into his real books. */
+function seed(){
+  const C=[
+    ["Marcus Webb","+15550102","41 Granger Ave","active","2021 Audi A4 — navy"],
+    ["Priya Raman","+15550103","8 Linden Cres","active","2018 Mazda CX-5 — white"],
+    ["Tyler Brooks","+15550104","216 Halstead Rd","active","2015 Ford F-150 — silver"],
+    ["Dana Olsen","+15550105","77 Marlow St","active","2022 Tesla Model 3 — red"],
+    ["Chris Nguyen","+15550106","5 Ardwick Blvd","lead","2012 Honda Civic — grey"],
+  ];
+  const customers=C.map(([name,phone,street,status],i)=>({
+    id:i+1,name,phone,email:"",street,city:"",state:"",zip:"",
+    status,source:"Sample data",tags:["sample"],access:"",notes:"",followup:"",
+    log:[],created:Date.now(),sample:true}));
+  // [customerId, service, price, dayOffset, time, done, collected]
+  const J=[
+    [1,"Full Detail (In & Out)",250,-5,"09:00",true,250],
+    [2,"Interior Detail",150,-4,"13:00",true,150],
+    [3,"Express Wash & Wax",60,-2,"11:30",true,60],
+    [1,"Engine Bay Cleaning",70,-2,"15:00",true,70],
+    [4,"Headlight Restoration",80,-1,"10:00",true,40],
+    [2,"Express Wash & Wax",60,0,"09:30",false,0],
+    [4,"Ceramic Coating",650,0,"13:00",false,0],
+    [3,"Pet Hair Removal",60,2,"10:30",false,0],
+    [5,"Paint Correction (1-Step)",400,4,"09:00",false,0],
+  ];
+  const jobs=J.map(([cid,service,price,off,time,done,collected],i)=>({
+    id:i+1,customerId:cid,service,price,date:offset(off),time,recurring:"none",
+    status:done?"completed":"scheduled",collected,payMethod:done?"Cash":"",
+    vehicle:C[cid-1][4],notes:"",created:Date.now(),
+    completedAt:done?Date.now():0,sample:true}));
+  return normalize({customers,jobs,settings:DEFAULT_SETTINGS(),
+    seqC:customers.length+1,seqJ:jobs.length+1,seeded:true});
+}
+function sampleCount(){return db.customers.filter(c=>c.sample).length+db.jobs.filter(j=>j.sample).length;}
+function clearSampleData(){
+  const ids=new Set(db.customers.filter(c=>c.sample).map(c=>c.id));
+  const n=sampleCount();
+  db.jobs=db.jobs.filter(j=>!j.sample&&!ids.has(j.customerId));
+  db.customers=db.customers.filter(c=>!c.sample);
+  save();toast(`Removed ${n} sample record${n!==1?"s":""} — all yours now ✨`,"ok");render();
+}
+/* LOCAL calendar date — never toISOString(), which is UTC and rolls to "tomorrow" every
+   evening (Toronto UTC-4/5): typed at 8pm Jul 14, the app thought it was Jul 15. */
+function localISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function offset(n){const d=new Date();d.setDate(d.getDate()+n);return localISO(d);}
+function today(){return localISO(new Date());}
+/* Small UI-preference store — kept out of `db` so it never triggers the backup loop. */
+function uiPref(){try{return JSON.parse(localStorage.getItem("banana.ui"))||{};}catch(e){return{};}}
+function uiSet(p){localStorage.setItem("banana.ui",JSON.stringify(Object.assign(uiPref(),p)));}
+
+/* ---------------- State ---------------- */
+let view="dashboard",query="",custFilter="all",custSort="name-asc",moneyPeriod="month";
+let custSearchOpen=false,custPage=0,custPageSize=25;
+let dashRevPeriod=uiPref().revPeriod||"month"; // chart style: smooth area, everywhere (bars/line retired)
+let dashRevTab="revenue"; // revenue | goal — in-memory only
+let schedView=uiPref().schedView==="day"?"day":"week"; // week | day — anything else falls back to week
+let schedDay=today();     // ISO day shown by the timeline — in-memory only
+let schedAnchor=null;     // first day of the "7 days" strip; pinned so the columns don't slide under you
+let editCust=null,editJob=null,draftLog=[],smsCtx=null,jobDraft=null,jobDirty=false,custDirty=false,toastTimer=null;
+
+/* ---------------- Utils ---------------- */
+const $=s=>document.querySelector(s);
+const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function money(n){n=+n||0;const neg=n<0;n=Math.abs(n);
+  const s=n%1===0?n.toLocaleString():n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  return (neg?"-$":"$")+s;}
+function money2(n){return "$"+(+n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function avatarColor(name){let h=0;for(let i=0;i<name.length;i++)h=name.charCodeAt(i)+((h<<5)-h);
+  const c=["#38bdf8","#34d399","#a78bfa","#fbbf24","#fb7185","#2ab8e8","#f472b6","#a3e635"];return c[Math.abs(h)%c.length];}
+function initials(name){const p=(name||"").trim().split(/\s+/);return ((p[0]||"")[0]||"?").toUpperCase()+((p[1]||"")[0]||"").toUpperCase();}
+function firstName(n){return (n||"").trim().split(/\s+/)[0]||"";}
+function cleanNum(p){return (p||"").replace(/[^\d+]/g,"");}
+function fmtPhone(p){const d=(p||"").replace(/[^\d]/g,"");
+  if(d.length===10)return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  if(d.length===11&&d[0]==="1")return `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+  return p||"";}
+function fmtDate(d,opt){if(!d)return"—";const x=new Date(d+"T00:00:00");
+  return x.toLocaleDateString(undefined,opt||{month:"short",day:"numeric",year:"numeric"});}
+function fmtDateShort(d){if(!d)return"—";const x=new Date(d+"T00:00:00");return x.toLocaleDateString(undefined,{month:"short",day:"numeric"});}
+function fmtDow(d){if(!d)return"";const x=new Date(d+"T00:00:00");return x.toLocaleDateString(undefined,{weekday:"short"});}
+function fmtTime(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";const hh=((h+11)%12)+1;return `${hh}:${String(m).padStart(2,"0")} ${ap}`;}
+function tlTimeRange(t){if(!t)return"";const[h,m]=t.split(":").map(Number);let eh=h+1,em=m;if(eh>23){eh=23;em=59;}
+  return `${fmtTime(t)} - ${fmtTime(`${eh}:${em}`)}`;}
+function fmtWhen(ts){return new Date(ts).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
+function toast(m,kind){const t=$("#toast");clearTimeout(toastTimer);t.textContent=m;t.className="toast show"+(kind?(" "+kind):"");toastTimer=setTimeout(()=>t.className="toast",kind==="err"?3400:2300);}
+function toastAction(m,btnLabel,fn){const t=$("#toast");clearTimeout(toastTimer);t.textContent=m;
+  const b=document.createElement("button");b.className="btn sm btn-primary";b.style.marginLeft="10px";b.textContent=btnLabel;
+  b.onclick=()=>{clearTimeout(toastTimer);t.className="toast";fn();};
+  t.appendChild(b);t.className="toast show ok";toastTimer=setTimeout(()=>t.className="toast",8000);}
+function addr1(c){return [c.street].filter(Boolean).join("");}
+function addrFull(c){const cityzip=[c.city,c.state].filter(Boolean).join(", ")+(c.zip?" "+c.zip:"");return [c.street,cityzip.trim()].filter(x=>x&&x.trim()).join(", ");}
+function mapsUrl(c){return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addrFull(c));}
+
+/* ---------------- Aggregates ---------------- */
+const custById=id=>db.customers.find(c=>c.id===id);
+const custJobs=id=>db.jobs.filter(j=>j.customerId===id);
+function jobBalance(j){return j.status!=="completed"?0:Math.max(0,(+j.price||0)-(+j.collected||0));} // money is owed only once the work is done — a booked job isn't a debt
+function payState(j){const p=+j.price||0,c=+j.collected||0;if(p<=0)return c>0?"paid":"none";if(c<=0)return "unpaid";if(c<p)return "partial";return "paid";}
+function custCollected(id){return custJobs(id).filter(j=>j.status!=="cancelled").reduce((s,j)=>s+(+j.collected||0),0);}
+function custBalance(id){return custJobs(id).reduce((s,j)=>s+jobBalance(j),0);}
+function custNext(id){return custJobs(id).filter(j=>j.status==="scheduled"&&j.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];}
+function custLast(id){return custJobs(id).filter(j=>j.status==="completed").sort((a,b)=>b.date.localeCompare(a.date))[0];}
+function totalOutstanding(){return db.jobs.reduce((s,j)=>s+jobBalance(j),0);}
+function revenueByMonth(n){
+  const out=[];const base=new Date();base.setDate(1);
+  for(let i=n-1;i>=0;i--){const dt=new Date(base.getFullYear(),base.getMonth()-i,1);
+    const ym=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
+    const total=db.jobs.filter(j=>j.status!=="cancelled"&&(j.date||"").slice(0,7)===ym).reduce((s,j)=>s+(+j.collected||0),0);
+    out.push({ym,label:dt.toLocaleDateString(undefined,{month:"short"}),year:dt.getFullYear(),total});}
+  return out;
+}
+function moneyShort(n){n=+n||0;const a=Math.abs(n);
+  if(a>=1000)return "$"+(n/1000).toFixed(a%1000===0?0:1)+"k";return "$"+Math.round(n);}
+function niceCeil(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;
+  const nf=f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10;return nf*p;}
+/* Chart geometry shared by every renderer. data=[{label,value,year?}]
+   Draws at the REAL container width — phones get a chart built for their screen,
+   not a desktop-wide canvas scaled down into a squished ribbon. */
+function chartGeo(data,height){
+  const cEl=$("#content");
+  const W=Math.max(300,((cEl&&cEl.offsetWidth)||900)-64),H=height,padL=48,padR=16,padT=22,padB=26;
+  const cw=W-padL-padR,ch=H-padT-padB,n=data.length;
+  const niceMax=niceCeil(Math.max(1,...data.map(d=>d.value))),ticks=4;
+  const step=Math.max(1,Math.ceil(n/Math.max(4,Math.floor(cw/58)))),showLbl=i=>i%step===0||i===n-1; // one x-label per ~58px
+  const maxV=Math.max(0,...data.map(d=>d.value));
+  let grid="";
+  for(let i=0;i<=ticks;i++){const y=padT+ch-(ch*i/ticks);
+    grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.12)" stroke-width="1"/>`;
+    grid+=`<text x="${padL-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" font-style="italic" fill="#6b7280">${moneyShort(niceMax*i/ticks)}</text>`;}
+  const xLabels=data.map((d,i)=>showLbl(i)?`<text x="0" y="${H-8}" text-anchor="middle" font-size="10.5" font-style="italic" fill="#9aa1ab" font-weight="600" data-lx="${i}">${esc(d.label)}</text>`:"").join("");
+  return {W,H,padL,padR,padT,padB,cw,ch,n,niceMax,ticks,step,showLbl,maxV,grid,xLabels};
+}
+function svgWrap(g,inner,defs){
+  return `<svg viewBox="0 0 ${g.W} ${g.H}" width="100%" height="${g.H}" preserveAspectRatio="xMidYMid meet" style="display:block;max-width:100%">
+    ${defs||""}${g.grid}${inner}</svg>`;
+}
+/* Smooth cubic path through points (Catmull-Rom → bezier), clamped to the plot area. */
+function smoothPath(pts,yMin,yMax){
+  if(pts.length<3)return pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const cl=y=>Math.max(yMin,Math.min(yMax,y));
+  let d="M"+pts[0][0].toFixed(1)+" "+pts[0][1].toFixed(1);
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
+    d+=`C${(p1[0]+(p2[0]-p0[0])/6).toFixed(1)} ${cl(p1[1]+(p2[1]-p0[1])/6).toFixed(1)} ${(p2[0]-(p3[0]-p1[0])/6).toFixed(1)} ${cl(p2[1]-(p3[1]-p1[1])/6).toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+/* The revenue chart — one style everywhere: a smooth filled area. */
+function areaChartSVG(data,height){
+  height=height||230; const g=chartGeo(data,height); const base=g.padT+g.ch;
+  const X=i=>g.n<=1?g.padL+g.cw/2:g.padL+g.cw*i/(g.n-1), Y=v=>g.padT+g.ch-g.ch*(v/g.niceMax);
+  const pts=data.map((d,i)=>[X(i),Y(d.value)]);
+  const path=smoothPath(pts,g.padT,base);
+  const area=`<path d="${path} L ${pts[pts.length-1][0].toFixed(1)} ${base.toFixed(1)} L ${pts[0][0].toFixed(1)} ${base.toFixed(1)} Z" fill="url(#areagrad)" stroke="none"/>`;
+  const glow=`<path d="${path}" fill="none" stroke="rgba(139,92,246,.35)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const line=`<path d="${path}" fill="none" stroke="url(#linegrad)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const baseline=`<line x1="${g.padL}" y1="${base.toFixed(1)}" x2="${(g.W-g.padR).toFixed(1)}" y2="${base.toFixed(1)}" stroke="rgba(255,255,255,.15)" stroke-width="1.25"/>`;
+  let cols="",labels="";
+  data.forEach((d,i)=>{const[x,y]=pts[i];
+    if(d.value>0&&(i===data.length-1||d.value===g.maxV))labels+=`<text x="${x.toFixed(1)}" y="${(y-12).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" font-style="italic" fill="#f2f9ff">${moneyShort(d.value)}</text>`;
+    if(g.showLbl(i))labels+=`<text x="${x.toFixed(1)}" y="${g.H-8}" text-anchor="middle" font-size="10.5" fill="#9aa1ab" font-weight="600" font-style="italic">${esc(d.label)}</text>`;
+    const gap=g.cw/Math.max(1,g.n);
+    cols+=`<g class="acol" data-lbl="${esc(d.label)+(d.year?(" "+d.year):"")}" data-val="${esc(money(d.value))}">
+      <rect x="${(x-gap/2).toFixed(1)}" y="${g.padT.toFixed(1)}" width="${gap.toFixed(1)}" height="${(g.ch+6).toFixed(1)}" fill="transparent"/>
+      <circle class="adot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#0b0c10" stroke="#8b5cf6" stroke-width="2.5"/></g>`;});
+  const defs=`<defs>
+    <linearGradient id="areagrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(139,92,246,.45)"/><stop offset=".7" stop-color="rgba(139,92,246,.08)"/><stop offset="1" stop-color="rgba(139,92,246,0)"/></linearGradient>
+    <linearGradient id="linegrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6d28d9"/><stop offset=".5" stop-color="#8b5cf6"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+  </defs>`;
+  return svgWrap(g,area+glow+line+baseline+labels+cols,defs);
+}
+function revChartSVG(data,type,height){return areaChartSVG(data,height);}
+/* Hover tooltip shared by column + area charts. Re-bound after each chart render. */
+function bindChartTips(){
+  const tip=$("#chart-tip"); if(!tip)return;
+  document.querySelectorAll(".acol").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML=`<div class="tl">${esc(el.dataset.lbl||"")}</div><div class="tv">${esc(el.dataset.val||"")}</div>`;tip.classList.add("show");});
+    el.addEventListener("mousemove",e=>{const w=innerWidth,x=e.clientX;
+      tip.style.left=(x>w-160?x-14-tip.offsetWidth:x+14)+"px";tip.style.top=(e.clientY-12)+"px";});
+    el.addEventListener("mouseleave",()=>tip.classList.remove("show"));
+  });
+}
+/* Revenue collected, bucketed to the chosen period. Returns {series,total,title}. */
+function revenueSeries(period){
+  const now=new Date(); const iso=localISO;
+  const sumRange=(from,to)=>db.jobs.filter(j=>j.status!=="cancelled"&&j.date>=from&&j.date<=to).reduce((s,j)=>s+(+j.collected||0),0);
+  const daily=days=>{const out=[];for(let i=days-1;i>=0;i--){const d=new Date(now);d.setHours(0,0,0,0);d.setDate(d.getDate()-i);
+    const ds=iso(d);out.push({label:(d.getMonth()+1)+"/"+d.getDate(),value:sumRange(ds,ds)});}return out;};
+  let series=[],title="";
+  if(period==="week"){series=daily(7);title="Revenue · last 7 days";}
+  else if(period==="month"){series=daily(30);title="Revenue · last 30 days";}
+  else if(period==="quarter"){for(let i=12;i>=0;i--){const end=new Date(now);end.setHours(0,0,0,0);end.setDate(end.getDate()-i*7);
+    const start=new Date(end);start.setDate(start.getDate()-6);series.push({label:(start.getMonth()+1)+"/"+start.getDate(),value:sumRange(iso(start),iso(end))});}
+    title="Revenue · last 13 weeks";}
+  else if(period==="year"){series=revenueByMonth(12).map(m=>({label:m.label,year:m.year,value:m.total}));title="Revenue · last 12 months";}
+  else{const dates=db.jobs.filter(j=>j.date).map(j=>j.date).sort();
+    if(dates.length){const fd=new Date(dates[0].slice(0,7)+"-01");
+      const months=(now.getFullYear()-fd.getFullYear())*12+(now.getMonth()-fd.getMonth())+1;
+      series=revenueByMonth(Math.max(1,months)).map(m=>({label:m.label,year:m.year,value:m.total}));}
+    title="Revenue · all time";}
+  return {series,total:series.reduce((s,m)=>s+m.value,0),title};
+}
+/* Collected so far this year, month by month, running total — the Goal tab's series. */
+/* Each month stands on its own against the monthly goal — no running total, or a strong
+   January would carry a dead March. Oldest first, so the last point is the month in progress. */
+function goalSeries(){
+  return revenueByMonth(12).map(m=>({label:m.label,year:m.year,value:m.total}));
+}
+/* Interactive revenue panel — Revenue/Goal tabs + period switcher (Dashboard). */
+function dashRevenuePanel(){
+  const goal=dashRevTab==="goal";
+  const series=goal?goalSeries():revenueSeries(dashRevPeriod).series;
+  const monthNow=series.length?series[series.length-1].value:0; // Goal tab: the month in progress
+  const big=goal
+    ? `${money(monthNow)} / ${money(GOAL)} · ${Math.round(monthNow/GOAL*100)}%`
+    : money(series.reduce((s,d)=>s+d.value,0));
+  const hit=series.filter(d=>d.value>0);
+  const avg=hit.length?hit.reduce((s,d)=>s+d.value,0)/hit.length:0;
+  const periods=[["week","Week"],["month","Month"],["quarter","Quarter"],["year","Year"],["all","All time"]];
+  const body=hit.length?areaChartSVG(series,184)
+    :`<div class="empty" style="padding:28px"><div class="big">📊</div>No revenue in this range yet.</div>`;
+  return `<div class="panel" style="margin-bottom:18px" id="dash-rev">
+    <div class="panel-pad" style="padding:16px 18px">
+      <div style="display:flex;gap:4px;margin-bottom:10px">
+        ${[["revenue","Revenue"],["goal","Goal"]].map(([v,l])=>`<button class="ftab ${dashRevTab===v?"active":""}" data-ftab="${v}">${l}</button>`).join("")}
+      </div>
+      <div class="sec" style="margin:0;color:#fff;font-size:12px;font-weight:700">${goal?"Goal — this month":"Revenue"}</div>
+      <div class="fh-big">${big}</div>
+      ${body}
+      <div style="color:var(--muted);font-size:12px;margin-top:6px;font-style:italic">Avg: ${money(Math.round(avg))}</div>
+      ${goal?"":`<div class="toolbar" style="margin-top:10px">
+        <div class="seg">${periods.map(([v,l])=>`<button data-rp="${v}" class="${dashRevPeriod===v?"active":""}">${l}</button>`).join("")}</div>
+      </div>`}
+    </div></div>`;
+}
+/* ---------------- Render ---------------- */
+function render(){
+  if(view==="money")view="dashboard"; // Money tab folded into Home
+  $("#c-sched").textContent=db.jobs.filter(j=>j.status==="scheduled").length;
+  $("#c-cust").textContent=db.customers.length;
+  document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("active",a.dataset.view===view));
+  document.body.classList.toggle("no-fab",view==="settings");
+  ({dashboard:renderDashboard,schedule:renderSchedule,customers:renderCustomers,settings:renderSettings}[view])();
+}
+
+/* ---- Dashboard ---- */
+/* Personal stat greeting — ONE line picked per app-open (stable while clicking around),
+   a different one next time the app opens. Stats span week/month/quarter/year/all-time. */
+let heroPick=-1;
+const GOAL=5000; // target collected per MONTH (hero stat line + revenue panel Goal tab)
+function heroCard(){
+  const t=today(),ym=t.slice(0,7),Y=t.slice(0,4);
+  const mon=new Date().toLocaleDateString(undefined,{month:"long"});
+  const live=db.jobs.filter(j=>j.status!=="cancelled");
+  const sumFrom=from=>live.filter(j=>j.date&&j.date>=from&&j.date<=t).reduce((s,j)=>s+(+j.collected||0),0);
+  const week=sumFrom(offset(-6));
+  const inMon=live.filter(j=>(j.date||"").slice(0,7)===ym);
+  const month=inMon.reduce((s,j)=>s+(+j.collected||0),0);
+  const monthJobs=inMon.filter(j=>j.status==="completed").length;
+  const q=Math.floor(new Date().getMonth()/3);
+  const quarter=live.filter(j=>{const m=+(j.date||"").slice(5,7);return (j.date||"").slice(0,4)===Y&&m>=q*3+1&&m<=q*3+3;}).reduce((s,j)=>s+(+j.collected||0),0);
+  const year=live.filter(j=>(j.date||"").slice(0,4)===Y).reduce((s,j)=>s+(+j.collected||0),0);
+  const allTime=live.reduce((s,j)=>s+(+j.collected||0),0);
+  const out=totalOutstanding();
+  const byDay={};inMon.forEach(j=>{if(j.date)byDay[j.date]=(byDay[j.date]||0)+(+j.collected||0);});
+  const bestDay=Math.max(0,...Object.values(byDay));
+  const custN=db.customers.length;
+  // Roll first: the greeting and the stat line below must land on the same nickname.
+  if(heroPick<0)heroPick=Math.floor(Math.random()*9973); // rolled once per app-open
+  // Owner's real name sits in the pool alongside the nicknames, so it still comes up.
+  const NICKS=[(db.settings.business.owner||"").trim(),"boss","bossman","big guy","chief","champ","legend"].filter(Boolean);
+  const name=NICKS[Math.floor(heroPick/7)%NICKS.length]; // /7 so it doesn't track the stat-line index
+  const opts=[];
+  if(week>0){
+    opts.push(`<b>${money(week)}</b> in the last 7 days. Stack it, ${name}. 🧱`);
+    opts.push(`This week alone: <b>${money(week)}</b>. Swirl marks fear you, ${name}. ✨`);}
+  if(month>0){
+    opts.push(`In ${mon}, you've collected <b>${money(month)}</b>. Keep it up, ${name}! 💪`);
+    opts.push(`<b>${money(month)}</b> banked in ${mon} — momentum looks good, ${name}. 🚀`);}
+  if(monthJobs>0)opts.push(`<b>${monthJobs} job${monthJobs>1?"s":""}</b> closed out in ${mon}. The grind pays, ${name}. 🔥`);
+  if(bestDay>0)opts.push(`Best day of ${mon}: <b>${money(bestDay)}</b>. Beat it, ${name}. ⚡`);
+  if(quarter>0)opts.push(`<b>${money(quarter)}</b> this quarter. The season's paying off, ${name}. 📈`);
+  if(year>0)opts.push(`<b>${money(year)}</b> collected in ${Y}. Real business now, ${name}. 🏗️`);
+  if(month>0){const pct=Math.round(month/GOAL*100);
+    if(month<GOAL){opts.push(`<b>${money(month)}</b> of the <b>${money(GOAL)}</b> month — ${pct}% there, ${name}. 🏁`);
+      opts.push(`<b>${money(GOAL-month)}</b> left to hit ${money(GOAL)} in ${mon}. Chip it down, ${name}. ⛏️`);}
+    else opts.push(`${money(GOAL)} month SMASHED — <b>${money(month)}</b> in ${mon}, ${name}. 🍾`);}
+  if(allTime>0){
+    opts.push(`<b>${money(allTime)}</b> all-time. From one bucket to all this, ${name}. 🏆`);
+    opts.push(`Lifetime: <b>${money(allTime)}</b> across <b>${custN}</b> customers. Empire in progress, ${name}. 👑`);}
+  if(out>0)opts.push(`<b>${money(out)}</b> is still out there — go collect it, ${name}. 🎯`);
+  if(!opts.length)opts.push(`Fresh page today — let's make it count, ${name}. ☀️`);
+  const h=new Date().getHours();
+  const greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
+  return `<div class="flyra-hero">
+    <div class="fh-greet">${greet},</div>
+    <div class="fh-name">${esc(name)}</div>
+    <div class="fh-sub">Welcome to your dashboard</div>
+    <div class="fh-stat">${opts[heroPick%opts.length]}</div>
+  </div>`;
+}
+let moneyOpen=false; // Money details <details> keeps its state across re-renders
+let homeSched=uiPref().homeSched||"today"; // Home schedule toggle: today | week
+function renderDashboard(){
+  const t=today();
+  const todays=db.jobs.filter(j=>j.status==="scheduled"&&j.date===t).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+  const week=db.jobs.filter(j=>j.status==="scheduled"&&j.date>=t&&j.date<=offset(7))
+    .sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""));
+  const list=homeSched==="week"?week:todays;
+  const dueFollow=db.customers.filter(c=>c.followup&&c.followup<=t);
+  const overdue=db.jobs.filter(j=>j.status==="scheduled"&&j.date<t);
+
+  $("#content").innerHTML=`
+   ${heroCard()}
+   ${dashRevenuePanel()}
+   <div class="panel" style="margin-bottom:18px">
+     <h2>📋 Schedule <span class="pill">${list.length}</span><span class="spacer"></span>
+       <div class="seg"><button data-hs="today" class="${homeSched==="today"?"active":""}">Today</button><button data-hs="week" class="${homeSched==="week"?"active":""}">This week</button></div></h2>
+     ${overdue.length?`<div style="padding:12px 18px 0"><div class="agenda-head overdue">⚠ ${overdue.length} overdue job${overdue.length!==1?"s":""} not marked done</div></div>`:""}
+     <div class="panel-pad" id="today-list"></div>
+   </div>
+   ${dueFollow.length?`<button class="btn" id="follow-pill" style="margin-bottom:18px">⏰ ${dueFollow.length} follow-up${dueFollow.length!==1?"s":""} due →</button>`:""}
+   ${moneyDetails()}`;
+
+  $("#today-list").innerHTML = (overdue.concat(list)).length
+    ? overdue.map(j=>jobCard(j,true)).join("")+list.map(j=>jobCard(j)).join("")
+    : `<div class="empty"><div class="big">☀️</div>${homeSched==="week"?"Nothing booked in the next 7 days.":"No jobs scheduled today. Enjoy the day — or book one!"}<br><button class="btn btn-primary" id="empty-add">＋ New Job</button></div>`;
+  const ea=$("#empty-add"); if(ea) ea.onclick=()=>openJob(null);
+  const fp=$("#follow-pill"); if(fp) fp.onclick=()=>{view="customers";render();};
+
+  bindJobCards(); bindMoneyDetails();
+  document.querySelectorAll("[data-hs]").forEach(b=>b.onclick=()=>{homeSched=b.dataset.hs;uiSet({homeSched});renderDashboard();});
+  document.querySelectorAll("[data-rp]").forEach(b=>b.onclick=()=>{dashRevPeriod=b.dataset.rp;uiSet({revPeriod:dashRevPeriod});renderDashboard();});
+  document.querySelectorAll("[data-ftab]").forEach(b=>b.onclick=()=>{dashRevTab=b.dataset.ftab;renderDashboard();});
+  bindChartTips();
+}
+
+/* ---- Schedule ---- */
+function renderSchedule(){
+  if(schedView==="week"&&!schedAnchor)schedAnchor=schedDay; // pin the strip's start once
+  $("#content").innerHTML=schedHeader()+(schedView==="week"?renderWeek():renderDayTimeline());
+  document.querySelectorAll("[data-dnav]").forEach(b=>b.onclick=()=>{
+    const delta=+b.dataset.dnav;
+    if(!delta){ schedDay=today(); schedAnchor=schedView==="week"?today():null; }
+    else if(schedView==="week"){ // ‹ › page the whole strip; focus follows to its first day
+      const d=new Date((schedAnchor||schedDay)+"T12:00:00"); d.setDate(d.getDate()+delta);
+      schedAnchor=localISO(d); schedDay=schedAnchor;
+    } else {
+      const d=new Date(schedDay+"T12:00:00"); d.setDate(d.getDate()+delta);
+      schedDay=localISO(d); schedAnchor=null;
+    }
+    renderSchedule();
+  });
+  // Column tap opens that day. Job cards sit inside the columns, so their handler stops
+  // propagation (see bindJobCards) — otherwise tapping a card would also switch the view.
+  document.querySelectorAll("[data-wcol]").forEach(c=>c.onclick=()=>{
+    schedDay=c.dataset.wcol; schedView="day"; schedAnchor=null; uiSet({schedView}); renderSchedule();
+  });
+  const sv=$("#sched-view"); if(sv) sv.onchange=()=>{schedView=sv.value;schedAnchor=null;uiSet({schedView});renderSchedule();};
+  const ss=$("#sched-search"); if(ss) ss.onclick=()=>{view="customers";custSearchOpen=true;render();};
+  const e3=$("#empty-add3"); if(e3) e3.onclick=()=>openJob(null);
+  bindJobCards();
+}
+/* Shared floating header for Week and Day: title/rev block (left) + nav arrows + view pill + search. */
+/* Seven days starting AT `iso` — a rolling window, not a Sun–Sat week.
+   Noon anchor so setDate never trips a timezone rollover. */
+function weekDates(iso){
+  const d=new Date(iso+"T12:00:00"), out=[];
+  for(let i=0;i<7;i++){out.push(localISO(d));d.setDate(d.getDate()+1);}
+  return out;
+}
+function schedHeader(){
+  const d=new Date(schedDay+"T12:00:00"); // noon guard — no UTC rollover
+  const dow=d.toLocaleDateString(undefined,{weekday:"long"});
+  const date=d.toLocaleDateString(undefined,{month:"long",day:"numeric"});
+  // Always the selected day's total, in both views — the strip is just a wider way to look at it.
+  const jobs=db.jobs.filter(j=>j.date===schedDay&&j.status!=="cancelled");
+  const rev=jobs.reduce((s,j)=>s+(j.status==="completed"?(+j.collected||0):(+j.price||0)),0);
+  const step=schedView==="week"?7:1;
+  return `<div class="tl-head">
+    <div class="tlh-wrap">
+      <div class="tlh-dow">${esc(dow)}</div>
+      <div class="tlh-date">${esc(date)}</div>
+      <div class="tl-rev">Total rev: <span style="color:var(--cyan);font-weight:800">${money(rev)}</span>${
+        schedDay!==today()?` · <button class="btn sm" data-dnav="0">Today</button>`:""}</div>
+    </div>
+    <button class="nb" data-dnav="-${step}" aria-label="Back">‹</button>
+    <button class="nb" data-dnav="${step}" aria-label="Forward">›</button>
+    <div class="fpill">${schedView==="day"?"Day":"7 days"} ⌄
+      <select id="sched-view" aria-label="Schedule view">
+        <option value="day" ${schedView==="day"?"selected":""}>Day</option>
+        <option value="week" ${schedView==="week"?"selected":""}>7 days</option>
+      </select>
+    </div>
+    <button class="fcir" id="sched-search" title="Search">⌕</button>
+  </div>`;
+}
+/* Schedule "7 days" — ported from Flyra's renderWeek/weekCard. A horizontal strip of day
+   columns rolling forward from the pinned anchor; tap a column to open that day, tap a card
+   to open the job. */
+function weekCard(j){
+  const c=custById(j.customerId)||{name:"(deleted customer)"};
+  const done=j.status==="completed";
+  return `<div class="week-card${done?" done":""}" data-jobcard="${j.id}">
+    ${j.time?`<div class="wt">${esc(fmtTime(j.time))}</div>`:""}
+    <div class="wn">${esc(c.name)}</div>
+    <div class="wp">${money2(j.price)}</div>
+  </div>`;
+}
+function renderWeek(){
+  const t=today();
+  const cols=weekDates(schedAnchor||schedDay).map(d=>{
+    const dt=new Date(d+"T12:00:00");
+    const jobs=db.jobs.filter(j=>j.date===d&&j.status!=="cancelled")
+      .sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
+    return `<div class="week-col${d===t?" today":""}${d===schedDay?" sel":""}" data-wcol="${d}">
+      <div class="week-col-head">${esc(dt.toLocaleDateString(undefined,{weekday:"short"}))}<br>${dt.getDate()}</div>
+      <div class="week-col-body">${jobs.length?jobs.map(weekCard).join(""):`<div class="week-empty">—</div>`}</div>
+    </div>`;
+  }).join("");
+  return `<div class="week-wrap"><div class="week-grid">${cols}</div></div>`;
+}
+/* Day timeline: one ISO day, 6AM–9PM hour rows + an Anytime bucket. */
+function renderDayTimeline(){
+  const jobs=db.jobs.filter(j=>j.date===schedDay&&j.status!=="cancelled")
+    .sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+
+  if(!jobs.length) return `<div class="panel"><div class="empty">Nothing booked this day.<br><button class="btn btn-primary" id="empty-add3">＋ New Job</button></div></div>`;
+
+  const anytime=jobs.filter(j=>!j.time);
+  let body=anytime.length?`<div class="tl-row"><div class="tl-hour">Anytime</div><div class="tl-slot">${anytime.map(tlCard).join("")}</div></div>`:"";
+  for(let h=6;h<=21;h++){
+    const list=jobs.filter(j=>{ if(!j.time) return false;
+      const jh=Math.min(21,Math.max(6,parseInt(j.time,10)||0)); return jh===h; });
+    const ap=h>=12?"PM":"AM", hh=((h+11)%12)+1;
+    body+=`<div class="tl-row"><div class="tl-hour">${hh} ${ap}</div><div class="tl-slot">${list.map(tlCard).join("")}</div></div>`;
+  }
+  return body;
+}
+function tlCard(j){
+  const c=custById(j.customerId)||{name:"(deleted customer)"};
+  const done=j.status==="completed";
+  const range=j.time?tlTimeRange(j.time):"";
+  return `<div class="tl-card ${done?"done":""}" data-jobcard="${j.id}">
+    <div class="n">${done?"✓ ":""}${esc(c.name)}</div>
+    <div class="s">${esc(j.service)}${j.vehicle?" · "+esc(j.vehicle):""}</div>
+    ${range?`<div class="tr">${esc(range)}</div>`:""}
+    <div class="p">${money2(j.price)}</div>
+  </div>`;
+}
+function jobCard(j,overdueFlag){
+  const c=custById(j.customerId)||{name:"(deleted customer)"};
+  const st=JOB_STATUS.find(s=>s.id===j.status)||JOB_STATUS[0];
+  const ps=payState(j); const bal=jobBalance(j);
+  const barColor=j.status==="completed"?"var(--green)":(overdueFlag||j.date<today()&&j.status==="scheduled")?"var(--red)":"var(--brand)";
+  const actions = j.status==="completed"
+    ? `<button class="btn sm" data-editjob="${j.id}">Open</button>`
+    : `<button class="btn sm btn-green" data-complete="${j.id}">✓ Done</button>`;
+  return `<div class="jobcard" data-jobcard="${j.id}">
+    <div class="time"><div class="t">${fmtTime(j.time)||"—"}</div><div class="d">${fmtDow(j.date)} ${fmtDateShort(j.date)}</div></div>
+    <div class="bar" style="background:${barColor}"></div>
+    <div class="body">
+      <div class="l1"><span class="svc">${esc(j.service)}</span>
+        ${money(j.price)!=="$0"?`<span class="money">${money(j.price)}</span>`:""}
+        ${bal>0?`<span class="badge b-${ps}">${money(bal)} due</span>`:""}
+        ${j.signature?`<span class="badge b-completed">✍ Signed</span>`:""}
+      </div>
+      <div class="who">👤 ${esc(c.name)}${c.phone?` · <a href="tel:${esc(cleanNum(c.phone))}">${esc(fmtPhone(c.phone))}</a>`:""}${addr1(c)?` · 📍 <a href="${mapsUrl(c)}" target="_blank" rel="noopener">${esc(addrFull(c))}</a>`:""}</div>
+      ${j.vehicle?`<div class="who" style="color:var(--faint)">🚗 ${esc(j.vehicle)}</div>`:""}
+      ${j.notes?`<div class="who" style="color:var(--faint)">📝 ${esc(j.notes)}</div>`:""}
+    </div>
+    <div class="actions">${actions}</div>
+  </div>`;
+}
+function bindJobCards(){
+  document.querySelectorAll("[data-jobcard]").forEach(el=>{
+    el.onclick=e=>{ if(e.target.closest("[data-complete],[data-editjob]"))return; e.stopPropagation(); openJob(+el.dataset.jobcard); };
+  });
+  document.querySelectorAll("[data-editjob]").forEach(b=>b.onclick=e=>{e.stopPropagation();openJob(+b.dataset.editjob);});
+  document.querySelectorAll("[data-complete]").forEach(b=>b.onclick=e=>{e.stopPropagation();completeJob(+b.dataset.complete);});
+}
+
+/* ---- Customers ---- */
+function custListRows(){
+  let list=db.customers.slice();
+  if(query) list=list.filter(c=>custMatches(c,query));
+  if(custFilter!=="all") list=list.filter(c=>c.status===custFilter);
+  list=sortCustomers(list);
+  return list;
+}
+const CUST_STAGES=["lead","active","inactive"],CUST_STAGE_LABEL={lead:"Lead",active:"Active",inactive:"Inactive"};
+const CUST_SORT_CYCLE=[["name-asc","Name A–Z"],["paid-desc","Paid: high → low"],["recent","Most recent service"]];
+function custStageMove(id,d){ // ‹ › on a card: shift status one step, log it, repaint
+  const c=custById(id); if(!c)return;
+  const i=CUST_STAGES.indexOf(c.status), n=i+d;
+  if(i<0||n<0||n>=CUST_STAGES.length)return;
+  const to=CUST_STAGE_LABEL[CUST_STAGES[n]];
+  c.log=c.log||[]; c.log.push({t:Date.now(),m:"↔ Stage: "+CUST_STAGE_LABEL[c.status]+" → "+to});
+  c.status=CUST_STAGES[n];
+  save(); toast(c.name+" → "+to); paintCustRows();
+}
+function paintCustRows(){ // repaint just the list — the search box keeps focus while typing
+  const all=custListRows(), pages=Math.max(1,Math.ceil(all.length/custPageSize));
+  custPage=Math.min(Math.max(custPage,0),pages-1);
+  const list=all.slice(custPage*custPageSize,(custPage+1)*custPageSize);
+  const GROUPS=[["lead","Leads","var(--amber)","lead"],["active","Active","var(--green)","client"],["inactive","Inactive","var(--muted)","client"]];
+  $("#cust-list").innerHTML=list.length?GROUPS.map(([id,label,color,noun])=>{
+    const rows=list.filter(c=>c.status===id);
+    if(!rows.length)return"";
+    const tot=rows.reduce((s,c)=>s+custCollected(c.id),0);
+    return `<div class="lead-grp"><div class="lg-head"><span class="lg-bar" style="background:${color}"></span><div><div class="lg-label">${label}</div><div class="lg-count">${rows.length} ${noun}${rows.length===1?"":"s"}</div></div><span class="lg-total">${money(tot)}</span></div>${rows.map(custCard).join("")}</div>`;
+  }).join(""):
+    `<div class="empty"><div class="big">👥</div>${query?"No one matches that search.":"No customers here yet."}<br><button class="btn btn-primary" id="empty-cust">＋ Add a customer</button></div>`;
+  const pager=pages>1?`<button class="fcir" data-cpage="-1"${custPage<=0?' disabled style="opacity:.3"':""}>‹</button>
+      <button class="fcir" data-cpage="1"${custPage>=pages-1?' disabled style="opacity:.3"':""}>›</button>`:"";
+  $("#cust-foot").innerHTML=`<span class="lead-total" id="cust-total">${all.length} total lead${all.length===1?"":"s"}</span>
+    <button class="fpill" id="cust-pagesize" title="Rows per page">${custPageSize} | page</button>${pager}`;
+  const ec=$("#empty-cust"); if(ec) ec.onclick=()=>openCust(null);
+  document.querySelectorAll("[data-cust]").forEach(el=>el.onclick=()=>openCust(+el.dataset.cust));
+  document.querySelectorAll("[data-stageback]").forEach(b=>b.onclick=e=>{e.stopPropagation();custStageMove(+b.dataset.stageback,-1);});
+  document.querySelectorAll("[data-stagefwd]").forEach(b=>b.onclick=e=>{e.stopPropagation();custStageMove(+b.dataset.stagefwd,1);});
+  document.querySelectorAll("[data-cpage]").forEach(b=>b.onclick=()=>{custPage+=+b.dataset.cpage;paintCustRows();});
+  const ps=$("#cust-pagesize"); if(ps) ps.onclick=()=>{custPageSize={25:50,50:100}[custPageSize]||25;custPage=0;paintCustRows();};
+}
+function renderCustomers(){
+  custPage=0;
+  const stages=[["all","All leads"],["lead","Leads"],["active","Active"],["inactive","Inactive"]];
+  const label=(stages.find(s=>s[0]===custFilter)||stages[1])[1];
+  const opts=stages.map(([v,l])=>`<option value="${v}" ${custFilter===v?"selected":""}>${l}</option>`).join("");
+  const searching=custSearchOpen||!!query;
+  $("#content").innerHTML=`
+    <div class="lx-bar">
+      <div class="lx-title">${label} <span class="lx-chev">⌄</span><select id="cust-stage" aria-label="Filter by stage">${opts}</select></div>
+      <button class="fcir" id="cust-search-btn" title="Search" style="margin-left:auto">⌕</button>
+      <button class="fcir" id="cust-sort-btn" title="Sort">☰</button>
+      <button class="fcir" id="cust-add2" title="New customer">＋</button>
+    </div>
+    ${searching?`<div class="toolbar" style="margin-bottom:10px"><div class="search" style="max-width:none;flex:1"><span class="mag">⌕</span><input id="search" type="text" aria-label="Search clients"></div></div>`:""}
+    <div id="cust-list"></div>
+    <div class="cust-foot" id="cust-foot"></div>`;
+  if(searching){const s=$("#search"); s.value=query;
+    s.addEventListener("input",e=>{query=e.target.value;custPage=0;paintCustRows();}); s.focus();}
+  paintCustRows();
+  $("#cust-stage").onchange=e=>{custFilter=e.target.value;renderCustomers();};
+  $("#cust-search-btn").onclick=()=>{custSearchOpen=!custSearchOpen;if(!custSearchOpen)query="";renderCustomers();};
+  $("#cust-sort-btn").onclick=()=>{
+    const i=CUST_SORT_CYCLE.findIndex(s=>s[0]===custSort), nx=CUST_SORT_CYCLE[(i+1)%CUST_SORT_CYCLE.length];
+    custSort=nx[0]; renderCustomers(); toast("Sorted: "+nx[1]);};
+  $("#cust-add2").onclick=()=>openCust(null);
+}
+function custMatches(c,q){q=q.toLowerCase();return [c.name,c.phone,c.email,c.street,c.city,c.zip,(c.tags||[]).join(" "),c.notes].some(v=>(v||"").toLowerCase().includes(q));}
+function sortCustomers(list){
+  const paid=c=>custCollected(c.id);
+  const lastDate=c=>{const j=custLast(c.id);return j?j.date:"";};
+  const cmp={
+    "name-asc":(a,b)=>a.name.localeCompare(b.name),
+    "name-desc":(a,b)=>b.name.localeCompare(a.name),
+    "paid-desc":(a,b)=>paid(b)-paid(a)||a.name.localeCompare(b.name),
+    "paid-asc":(a,b)=>paid(a)-paid(b)||a.name.localeCompare(b.name),
+    "recent":(a,b)=>(lastDate(b)||"").localeCompare(lastDate(a)||"")||a.name.localeCompare(b.name),
+    "oldest":(a,b)=>(lastDate(a)||"").localeCompare(lastDate(b)||"")||a.name.localeCompare(b.name),
+  };
+  return list.sort(cmp[custSort]||cmp["name-asc"]);
+}
+function custCard(c){
+  const paid=custCollected(c.id), i=CUST_STAGES.indexOf(c.status);
+  const arrow=(d,ch,attr)=>`<button class="lc-arrow"${(i>=0&&i+d>=0&&i+d<CUST_STAGES.length)?` data-${attr}="${c.id}"`:' disabled style="opacity:.3"'}>${ch}</button>`;
+  let pills=(c.tags||[]).slice(0,2).map(t=>`<span class="ph-pill" style="margin-top:0">${esc(t)}</span>`).join("");
+  if(c.followup){const d=Math.round((new Date(c.followup+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5);
+    pills+=`<span class="lchip" title="Follow-up ${esc(c.followup)}">${d>=0?d+"d":"due"}</span>`;}
+  return `<div class="lead-card" data-cust="${c.id}">
+      ${arrow(-1,"‹","stageback")}
+      <div class="avatar" style="background:${avatarColor(c.name)}">${esc(initials(c.name))}</div>
+      <div class="lc-mid"><div class="nm">${esc(c.name)}</div>
+        ${c.phone?`<div><span class="ph-pill">${esc(fmtPhone(c.phone))}</span></div>`:""}
+        ${pills?`<div class="lc-tags">${pills}</div>`:""}</div>
+      <div class="lc-right">${paid>0?`<span class="lchip">${money(paid)}</span>`:""}</div>
+      ${arrow(1,"›","stagefwd")}
+    </div>`;
+}
+
+/* ---- Money details (collapsed section on Home) ---- */
+function moneyDetails(){
+  const t=today(); const y=t.slice(0,4);
+  let from,to,label;
+  if(moneyPeriod==="month"){from=t.slice(0,7)+"-01";to=t.slice(0,7)+"-31";label="This month";}
+  else if(moneyPeriod==="quarter"){const q=Math.floor(new Date().getMonth()/3);const m0=q*3;from=`${y}-${String(m0+1).padStart(2,"0")}-01`;to=`${y}-${String(m0+3).padStart(2,"0")}-31`;label="This quarter";}
+  else if(moneyPeriod==="year"){from=y+"-01-01";to=y+"-12-31";label="This year";}
+  else {from="0000-01-01";to="9999-12-31";label="All time";}
+  const inRange=db.jobs.filter(j=>j.status!=="cancelled"&&j.date>=from&&j.date<=to);
+  const collected=inRange.reduce((s,j)=>s+(+j.collected||0),0);
+  const jobsDone=inRange.filter(j=>j.status==="completed").length;
+  const outstanding=totalOutstanding();
+  const unpaid=db.jobs.filter(j=>jobBalance(j)>0).sort((a,b)=>b.date.localeCompare(a.date));
+  const bySvc={}; inRange.forEach(j=>{bySvc[j.service]=(bySvc[j.service]||0)+(+j.collected||0);});
+  const svcRows=Object.entries(bySvc).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const maxSvc=Math.max(1,...svcRows.map(r=>r[1]));
+  const recentPays=db.jobs.filter(j=>+j.collected>0).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  return `<details class="panel money-details" id="money-details" ${moneyOpen?"open":""} style="margin-bottom:18px">
+    <summary>💵 Money details${outstanding>0?` <span class="money owe" style="font-size:13px">${money(outstanding)} outstanding</span>`:""}<span class="spacer"></span><span class="chev">▸</span></summary>
+    <div class="panel-pad" style="padding-top:6px">
+      <div class="toolbar" style="margin-bottom:12px"><div class="seg">
+        ${["month","quarter","year","all"].map(p=>`<button data-mp="${p}" class="${moneyPeriod===p?"active":""}">${({month:"Month",quarter:"Quarter",year:"Year",all:"All time"})[p]}</button>`).join("")}
+      </div></div>
+      <div class="totbar" style="margin-bottom:14px">
+        <div class="totbox"><div class="l">Collected · ${label}</div><div class="n" style="color:var(--green)">${money(collected)}</div></div>
+        <div class="totbox"><div class="l">Outstanding</div><div class="n" style="color:${outstanding>0?"var(--red)":"var(--ink)"}">${money(outstanding)}</div></div>
+        <div class="totbox"><div class="l">Jobs done · ${label}</div><div class="n">${jobsDone}</div></div>
+      </div>
+      <div class="sec">💳 Unpaid &amp; partial (${unpaid.length})</div>
+      ${unpaid.length?`<table><thead><tr><th>Date</th><th>Customer</th><th class="r">Balance</th></tr></thead><tbody>${unpaid.map(moneyUnpaidRow).join("")}</tbody></table>`:`<div class="empty" style="padding:18px"><div class="big">🎉</div>No outstanding balances. Nice!</div>`}
+      <div class="sec" style="margin-top:16px">📈 Revenue by service · ${label}</div>
+      ${svcRows.length?svcRows.map(([s,v])=>`
+        <div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;margin-bottom:4px"><span>${esc(s)}</span><span class="mono">${money(v)}</span></div>
+        <div style="height:8px;background:var(--gray-soft);border-radius:6px;overflow:hidden"><div style="height:100%;width:${Math.round(v/maxSvc*100)}%;background:var(--brand);border-radius:6px"></div></div></div>`).join(""):`<div class="empty" style="padding:16px">No revenue in this period yet.</div>`}
+      <div class="sec" style="margin-top:16px">🧾 Recent payments</div>
+      ${recentPays.length?`<table><tbody>${recentPays.map(moneyRecentRow).join("")}</tbody></table>`:`<div class="empty" style="padding:16px">No payments recorded yet.</div>`}
+    </div></details>`;
+}
+function bindMoneyDetails(){
+  const d=$("#money-details"); if(!d)return;
+  d.addEventListener("toggle",()=>{moneyOpen=d.open;});
+  document.querySelectorAll("[data-mp]").forEach(b=>b.onclick=()=>{moneyPeriod=b.dataset.mp;moneyOpen=true;renderDashboard();});
+  document.querySelectorAll("tr[data-job]").forEach(tr=>tr.onclick=()=>openJob(+tr.dataset.job,true));
+}
+function moneyUnpaidRow(j){const c=custById(j.customerId)||{name:"(deleted)"};
+  return `<tr class="clickable" data-job="${j.id}"><td>${fmtDateShort(j.date)}</td>
+    <td><div class="nm" style="font-size:13px">${esc(c.name)}</div><div class="sub">${esc(j.service)}${+j.collected>0?" · paid "+money(j.collected):""}</div></td>
+    <td class="r money owe">${money(jobBalance(j))}</td></tr>`;
+}
+function moneyRecentRow(j){const c=custById(j.customerId)||{name:"(deleted)"};
+  return `<tr class="clickable" data-job="${j.id}"><td style="width:70px">${fmtDateShort(j.date)}</td>
+    <td><div class="nm" style="font-size:13px">${esc(c.name)}</div><div class="sub">${esc(j.service)}${j.payMethod?" · "+esc(j.payMethod):""}</div></td>
+    <td class="r money pos">${money(j.collected)}</td></tr>`;
+}
+
+/* ---- Settings ---- */
+function renderSettings(){
+  const s=db.settings;
+  $("#content").innerHTML=`
+   <div class="grid-2">
+     <div class="col">
+       <div class="panel"><h2>🏢 Business info</h2><div class="panel-pad">
+         <div class="field"><label>Business name</label><input id="biz-name" value="${esc(s.business.name||"")}"></div>
+         <div class="field"><label>Your first name</label><input id="biz-owner" placeholder="used to greet you on the dashboard" value="${esc(s.business.owner||"")}"></div>
+         <div class="field"><label>Phone</label><input id="biz-phone" value="${esc(s.business.phone||"")}"></div>
+         <div class="field"><label>Confirmation email</label><input id="biz-notify" type="email" value="${esc(s.business.notify||"")}"></div>
+         <div class="hint">Your business name fills the <b>{business}</b> variable in every text.
+           Signed contracts open a prefilled email to the confirmation address — press Send in your mail app.</div>
+       </div></div>
+       <div class="panel"><h2>🧰 Services &amp; default prices <span class="spacer"></span><button class="btn sm btn-primary" id="svc-add">＋ Add</button></h2>
+         <div class="panel-pad" id="svc-list"></div></div>
+     </div>
+     <div class="col">
+       <div class="panel"><h2>💬 Text templates <span class="spacer"></span><button class="btn sm btn-primary" id="tpl-add">＋ New</button></h2>
+         <div class="panel-pad" id="tpl-list"></div></div>
+       <div class="panel"><h2>🔄 Cloud sync (PC ⇄ phone)</h2><div class="panel-pad">
+         <div class="note" style="margin-bottom:12px"><b>Status:</b> <span id="sync-state">…</span><br>
+           Keeps your PC and phone on the same data automatically — every change uploads to a
+           <b>private</b> GitHub Gist on your account; each device pulls the newest copy when opened.<br><br>
+           <b>One-time setup (do on BOTH devices):</b> open
+           <b>github.com/settings/tokens/new?scopes=gist&amp;description=Banana-CRM-Sync</b> →
+           Generate token → copy it → paste below. The token stays on the device only — never in backups.</div>
+         <div class="field"><label>GitHub token</label><input id="sync-key" type="password" placeholder="ghp_…"></div>
+       </div></div>
+       <div class="panel"><h2>💾 Data</h2><div class="panel-pad">
+         <div id="autobackup-card"></div>
+         <div style="display:flex;gap:8px;flex-wrap:wrap">
+           <button class="btn" id="dat-backup">⬇ Backup now</button>
+           <button class="btn" id="dat-restore">⬆ Restore</button>
+           <button class="btn" id="dat-expcsv">Export CSV</button>
+           <button class="btn" id="dat-impcsv">Import CSV</button>
+           <button class="btn" id="dat-paste">📋 Paste import</button>
+           ${sampleCount()?`<button class="btn" id="dat-clearsample">🧹 Remove sample data</button>`:""}
+         </div>
+         <div class="hint" style="margin-top:10px">Backup = a full copy of your CRM in one file. Restore replaces everything with a chosen backup.</div>
+       </div></div>
+     </div>
+   </div>`;
+  // business
+  $("#biz-name").onchange=e=>{s.business.name=e.target.value.trim();save();};
+  $("#biz-owner").onchange=e=>{s.business.owner=e.target.value.trim();save();render();};
+  $("#biz-phone").onchange=e=>{s.business.phone=e.target.value.trim();save();};
+  $("#biz-notify").onchange=e=>{s.business.notify=e.target.value.trim();save();};
+  // services
+  renderSvcList();
+  $("#svc-add").onclick=()=>{s.services.push({name:"New service",price:0});save();renderSvcList();};
+  // templates
+  renderTplList();
+  $("#tpl-add").onclick=()=>{s.templates.push({id:"t"+Date.now(),name:"New template",body:"Hi {firstname}, "});save();renderTplList();};
+  // cloud sync
+  $("#sync-key").value=syncToken();
+  $("#sync-key").onchange=e=>{const v=e.target.value.trim();
+    if(!v){localStorage.removeItem(SYNC_KEY);localStorage.removeItem(SYNC_GIST);syncState="off";paintSyncChip();toast("Cloud sync turned off","ok");return;}
+    toast("Connecting to GitHub…");syncConnect(v);};
+  paintSyncCard();
+  // data actions
+  $("#dat-backup").onclick=backupDownload;
+  $("#dat-restore").onclick=()=>$("#file-json").click();
+  $("#dat-expcsv").onclick=csvExport;
+  $("#dat-impcsv").onclick=()=>$("#file-csv").click();
+  $("#dat-paste").onclick=()=>openPaste();
+  const cs=$("#dat-clearsample");
+  if(cs)cs.onclick=()=>{if(confirm(`Delete the ${sampleCount()} sample records? Anything you added yourself is kept.`))clearSampleData();};
+  renderAutobackupCard();
+}
+function renderAutobackupCard(){
+  const el=$("#autobackup-card"); if(!el)return;
+  el.innerHTML=`<div class="note" style="margin-bottom:12px">
+    <b>☁ Automatic backup:</b> <span id="ab-state">checking…</span><br>
+    Pick a folder inside your OneDrive once — every change then saves there by itself,
+    and OneDrive keeps a copy in the cloud.</div>
+    <button class="btn btn-primary" id="ab-setup" style="margin-bottom:14px">Set up auto-backup</button>`;
+  // Wiring + live state text arrive with the auto-backup module (initAutoBackup/paintBackupChip).
+  if(typeof paintAutobackupCard==="function")paintAutobackupCard();
+}
+function renderSvcList(){
+  const s=db.settings; const el=$("#svc-list");
+  el.innerHTML=s.services.map((sv,i)=>`<div class="svc-row">
+    <input data-svn="${i}" value="${esc(sv.name)}" style="flex:1">
+    <div class="field pre" style="margin:0;width:120px"><span class="sym">$</span><input data-svp="${i}" type="number" min="0" value="${sv.price||0}" style="padding-left:24px"></div>
+    <button class="btn-ghost btn sm" data-svd="${i}" title="Remove">🗑</button>
+  </div>`).join("")||`<div class="hint">No services yet.</div>`;
+  el.querySelectorAll("[data-svn]").forEach(i=>i.onchange=()=>{s.services[+i.dataset.svn].name=i.value;save();});
+  el.querySelectorAll("[data-svp]").forEach(i=>i.onchange=()=>{s.services[+i.dataset.svp].price=+i.value||0;save();});
+  el.querySelectorAll("[data-svd]").forEach(b=>b.onclick=()=>{s.services.splice(+b.dataset.svd,1);save();renderSvcList();});
+}
+function renderTplList(){
+  const s=db.settings; const el=$("#tpl-list");
+  el.innerHTML=s.templates.map(t=>`<div class="tpl-row"><div style="flex:1">
+    <input data-tn="${t.id}" value="${esc(t.name)}" style="font-weight:700;border:1px solid var(--line);border-radius:8px;padding:6px 9px;width:100%;margin-bottom:6px">
+    <textarea data-tb="${t.id}" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 9px;min-height:60px;resize:vertical">${esc(t.body)}</textarea>
+  </div><button class="btn-ghost btn sm" data-td="${t.id}" title="Delete">🗑</button></div>`).join("")||`<div class="hint">No templates.</div>`;
+  el.querySelectorAll("[data-tn]").forEach(i=>i.onchange=()=>{s.templates.find(x=>x.id===i.dataset.tn).name=i.value;save();});
+  el.querySelectorAll("[data-tb]").forEach(i=>i.onchange=()=>{s.templates.find(x=>x.id===i.dataset.tb).body=i.value;save();});
+  el.querySelectorAll("[data-td]").forEach(b=>b.onclick=()=>{s.templates=s.templates.filter(x=>x.id!==b.dataset.td);save();renderTplList();});
+  el.insertAdjacentHTML("beforeend",`<div class="hint" style="margin-top:6px">Variables: <b>{firstname} {name} {service} {date} {time} {address} {balance} {price} {business}</b> — filled per customer/job.</div>`);
+}
+
+/* ---------------- Customer modal ---------------- */
+function openCust(id){
+  editCust=id; custDirty=false; const c=id?custById(id):null;
+  $("#cust-title").textContent=c?c.name:"New Customer";
+  $("#cust-hsub").textContent=c?(addrFull(c)||""):"";
+  $("#cust-delete").style.display=c?"inline-block":"none";
+  $("#cust-text").style.display=(c&&c.phone)?"inline-block":"none";
+  $("#cust-addjob").style.display=c?"inline-block":"none";
+  draftLog=c?JSON.parse(JSON.stringify(c.log||[])):[];
+  $("#cust-body").innerHTML=custForm(c);
+  bindCustForm(c);
+  $("#cust-overlay").classList.add("show");
+  setTimeout(()=>{const n=$("#cf-name");if(n&&!c)n.focus();},50);
+}
+function custForm(c){
+  const statusOpts=CUST_STATUS.map(s=>`<option value="${s.id}" ${c&&c.status===s.id?"selected":(!c&&s.id==="lead"?"selected":"")}>${s.label}</option>`).join("");
+  let history="";
+  if(c){
+    const jobs=custJobs(c.id).sort((a,b)=>b.date.localeCompare(a.date));
+    const paid=custCollected(c.id), bal=custBalance(c.id), count=jobs.filter(j=>j.status==="completed").length;
+    history=`
+     <div class="sec">Account</div>
+     <div class="totbar">
+       <div class="totbox"><div class="l">Total paid</div><div class="n" style="color:var(--green)">${money(paid)}</div></div>
+       <div class="totbox"><div class="l">Balance due</div><div class="n" style="color:${bal>0?"var(--red)":"var(--ink)"}">${money(bal)}</div></div>
+       <div class="totbox"><div class="l">Jobs done</div><div class="n">${count}</div></div>
+     </div>
+     <div class="sec">Job history <span style="-webkit-text-fill-color:initial;color:var(--brand);cursor:pointer;font-weight:800" id="cf-newjob2">＋ Add job</span></div>
+     <div id="cf-jobs">${jobs.length?jobs.map(jobLine).join(""):`<div class="hint">No jobs yet — add the first one.</div>`}</div>
+     <div class="sec">Activity log</div>
+     <div class="log-add"><input id="cf-loginput" aria-label="Log entry"><button class="btn btn-primary" id="cf-logadd">Add</button></div>
+     <ul class="log" id="cf-log"></ul>`;
+  }
+  return `
+    <div class="grid2">
+      <div class="field"><label>Name *</label><input id="cf-name" value="${c?esc(c.name):""}"></div>
+      <div class="field"><label>Phone</label><input id="cf-phone" value="${c?esc(c.phone):""}" placeholder="+1 555 123 4567"></div>
+    </div>
+    <div class="field"><label>Address</label><input id="cf-street" value="${c?esc(c.street||""):""}"></div>
+    <div class="grid2">
+      <div class="field"><label>Status</label><select id="cf-status">${statusOpts}</select></div>
+      <div class="field"><label>Follow-up date</label><input id="cf-followup" type="date" value="${c?esc(c.followup||""):""}"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="cf-notes">${c?esc(c.notes||""):""}</textarea></div>
+    ${history}`;
+}
+function jobLine(j){
+  const st=JOB_STATUS.find(s=>s.id===j.status);const bal=jobBalance(j);
+  return `<div class="jobline" data-jl="${j.id}">
+    <div class="jl-date">${fmtDateShort(j.date)}<br><span class="sub" style="font-weight:600">${fmtTime(j.time)||""}</span></div>
+    <div class="jl-svc">${esc(j.service)}<small>${money(j.price)} · ${st.label}${j.vehicle?" · 🚗 "+esc(j.vehicle):""}</small></div>
+    ${j.signature?`<span class="badge b-completed">✍ Signed</span>`:""}
+    ${j.status!=="completed"?"":bal>0?`<span class="money owe">${money(bal)} due</span>`:`<span class="badge b-paid">paid</span>`}
+  </div>`;
+}
+function bindCustForm(c){
+  if(c){
+    renderCfLog();
+    $("#cf-logadd").onclick=()=>{const v=$("#cf-loginput").value.trim();if(!v)return;draftLog.push({t:Date.now(),m:v});$("#cf-loginput").value="";renderCfLog();};
+    $("#cf-loginput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.ctrlKey&&!e.metaKey){e.preventDefault();$("#cf-logadd").click();}});
+    document.querySelectorAll("[data-jl]").forEach(el=>el.onclick=()=>openJob(+el.dataset.jl,true));
+    const nj=$("#cf-newjob2"); if(nj) nj.onclick=()=>{persistCustEdits();openJob(null,false,editCust);};
+  }
+}
+function renderCfLog(){
+  const el=$("#cf-log");if(!el)return;
+  el.innerHTML=draftLog.length?draftLog.slice().sort((a,b)=>b.t-a.t).map(e=>`<li><span class="when">${esc(fmtWhen(e.t))}</span><span class="txt">${esc(e.m)}</span><button class="rm" data-t="${e.t}">✕</button></li>`).join(""):`<li style="color:var(--muted);border:0">No activity yet.</li>`;
+  el.querySelectorAll(".rm").forEach(b=>b.onclick=()=>{draftLog=draftLog.filter(x=>x.t!=+b.dataset.t);renderCfLog();});
+}
+function gatherCust(){
+  const cur=editCust?custById(editCust):null;
+  return {name:$("#cf-name").value.trim(),phone:$("#cf-phone").value.trim(),
+    status:$("#cf-status").value,street:$("#cf-street").value.trim(),
+    followup:$("#cf-followup").value||"",notes:$("#cf-notes").value.trim(),log:draftLog,
+    // simplified out of the form — preserve any existing values, default empty for new
+    email:cur?(cur.email||""):"",city:cur?(cur.city||""):"",state:cur?(cur.state||""):"",zip:cur?(cur.zip||""):"",
+    access:cur?(cur.access||""):"",source:cur?(cur.source||""):"",tags:cur?(cur.tags||[]):[]};
+}
+function persistCustEdits(){ // save without closing (used before opening a job)
+  const data=gatherCust(); if(!data.name)return false;
+  if(editCust){Object.assign(custById(editCust),data);}
+  else{const id=db.seqC++;db.customers.push(Object.assign({id,created:Date.now()},data));editCust=id;}
+  save(); return true;
+}
+function saveCust(){
+  if(!$("#cf-name").value.trim()){toast("Please enter a name","err");$("#cf-name").focus();return;}
+  persistCustEdits();
+  const cid=editCust, d=jobDraft; jobDraft=null;
+  dismissCust(); render();
+  if(d){restoreJobDraft(d,cid);toast("Customer saved — job filled back in","ok");}
+  else toast("Customer saved","ok");
+}
+function restoreJobDraft(d,cid){ // came from "＋ Add a new customer first" — give back the half-typed job
+  openJob(null,false,cid); jobDirty=true; // restored draft counts as typed — clicking out saves it
+  const svcSel=$("#jf-service");
+  const has=[...(svcSel.options||[])].some(o=>o.value===d.service);
+  if(has)svcSel.value=d.service;
+  else if(d.service){svcSel.value="__custom";$("#jf-customwrap").style.display="";$("#jf-customsvc").value=d.service;}
+  $("#jf-price").value=d.price||"";$("#jf-date").value=d.date||today();$("#jf-time").value=d.time||"";
+  $("#jf-status").value=d.status||"scheduled";$("#jf-notes").value=d.notes||"";
+  $("#jf-collected").value=d.collected||"";$("#jf-vehicle").value=d.vehicle||"";
+  $("#jf-paymethod").value=d.payMethod||"";
+  updateBalHint();
+}
+function dismissCust(){$("#cust-overlay").classList.remove("show");editCust=null;jobDraft=null;}
+// Clicking out of the modal SAVES (owner: no scrolling to the Save button). Untouched = just closes.
+function closeCust(){
+  if(!$("#cust-overlay").classList.contains("show"))return;
+  if(custDirty&&$("#cf-name").value.trim())saveCust(); else dismissCust();
+}
+["input","change"].forEach(ev=>$("#cust-body").addEventListener(ev,()=>{custDirty=true;}));
+["input","change"].forEach(ev=>$("#job-body").addEventListener(ev,()=>{jobDirty=true;}));
+$("#cust-save").onclick=saveCust;
+$("#cust-cancel").onclick=dismissCust; // Cancel = the one explicit "throw my edits away"
+$("#cust-close").onclick=closeCust;
+$("#cust-delete").onclick=()=>{const c=custById(editCust);if(!c)return;
+  const n=custJobs(c.id).length;
+  if(!confirm(`Delete "${c.name}"${n?` and their ${n} job(s)`:""}? This can't be undone.`))return;
+  db.jobs=db.jobs.filter(j=>j.customerId!==c.id);db.customers=db.customers.filter(x=>x.id!==c.id);
+  save();dismissCust();render();toast("Customer deleted");};
+$("#cust-text").onclick=()=>{const c=custById(editCust);persistCustEdits();const j=custNext(editCust)||custLast(editCust);openSms(c,j);};
+$("#cust-addjob").onclick=()=>{if(persistCustEdits())openJob(null,false,editCust);};
+// A tap closes a modal only if it STARTED on the backdrop — a scroll drag that ends past the
+// modal's edge makes the click land on the overlay and used to dismiss it mid-scroll on phones.
+let __pdBackdrop=null;
+document.addEventListener("pointerdown",e=>{__pdBackdrop=(e.target.classList&&e.target.classList.contains("overlay"))?e.target:null;},true);
+const backdropTap=(e,ov)=>e.target===ov&&__pdBackdrop===ov;
+$("#cust-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#cust-overlay")))closeCust();});
+
+/* ---------------- Job modal ---------------- */
+function openJob(id,focusPay,presetCust){
+  editJob=id; jobDirty=false; const j=id?db.jobs.find(x=>x.id===id):null;
+  const cid=j?j.customerId:(presetCust||null);
+  $("#job-title").textContent=j?"Edit Job":"New Job";
+  const c=cid?custById(cid):null;
+  $("#job-hsub").textContent=c?(c.name+(addrFull(c)?" · "+addrFull(c):"")):"";
+  $("#job-delete").style.display=j?"inline-block":"none";
+  $("#job-text").style.display=(c&&c.phone)?"inline-block":"none";
+  $("#job-quote").style.display=j?"inline-block":"none";
+  $("#job-body").innerHTML=jobForm(j,cid);
+  bindJobForm();
+  $("#job-overlay").classList.add("show");
+  setTimeout(()=>{if(focusPay){const p=$("#jf-collected");if(p){p.focus();p.select();}}else if(!j){const sel=$("#jf-cust");if(sel&&!cid)sel.focus();}},50);
+}
+function jobForm(j,cid){
+  const custOpts=`<option value="">— choose customer —</option>`+db.customers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${cid===c.id?"selected":""}>${esc(c.name)}${c.city?" — "+esc(c.city):""}</option>`).join("");
+  const svcOpts=db.settings.services.map(s=>`<option value="${esc(s.name)}" data-price="${s.price}" ${j&&j.service===s.name?"selected":""}>${esc(s.name)}</option>`).join("")
+    +`<option value="__custom" ${j&&!db.settings.services.some(s=>s.name===j.service)?"selected":""}>Other / custom…</option>`;
+  const isCustom=j&&!db.settings.services.some(s=>s.name===j.service);
+  const statusOpts=JOB_STATUS.map(s=>`<option value="${s.id}" ${j&&j.status===s.id?"selected":""}>${s.label}</option>`).join("");
+  const payOpts=`<option value="">— method —</option>`+PAY_METHODS.map(p=>`<option ${j&&j.payMethod===p?"selected":""}>${p}</option>`).join("");
+  const price=j?j.price:"";
+  const cc=cid?custById(cid):null;
+  return `
+    <div class="field"><label>Customer *</label><select id="jf-cust">${custOpts}</select>
+      <div class="hint">Not in the list? <span style="color:var(--brand);cursor:pointer;font-weight:700" id="jf-newcust">＋ Add a new customer first</span></div></div>
+    <div class="field"><label>Address</label><input id="jf-address" value="${cc?esc(cc.street||""):""}">
+      <div class="hint">Saved on the customer's card — edits here update it everywhere.</div></div>
+    <div class="grid2">
+      <div class="field"><label>Service</label><select id="jf-service">${svcOpts}</select></div>
+      <div class="field" id="jf-customwrap" style="${isCustom?"":"display:none"}"><label>Custom service name</label><input id="jf-customsvc" value="${isCustom?esc(j.service):""}"></div>
+      <div class="field pre"><label>Price / quote</label><span class="sym" style="top:33px">$</span><input id="jf-price" type="number" min="0" step="1" value="${price}"></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>Date</label><input id="jf-date" type="date" value="${j?esc(j.date):today()}"></div>
+      <div class="field"><label>Time</label><input id="jf-time" type="time" value="${j?esc(j.time||""):"09:00"}"></div>
+      <div class="field"><label>Status</label><select id="jf-status">${statusOpts}</select></div>
+    </div>
+    <div class="field"><label>Job notes</label><textarea id="jf-notes">${j?esc(j.notes||""):""}</textarea></div>
+    <div class="sec">💵 Payment</div>
+    <div class="grid2">
+      <div class="field pre"><label>Collected</label><span class="sym" style="top:33px">$</span><input id="jf-collected" type="number" min="0" step="1" value="${j?(j.collected||""):""}"></div>
+      <div class="field"><label>&nbsp;</label><button class="btn" id="jf-payfull" style="width:100%">Mark paid in full</button></div>
+    </div>
+    <div id="jf-balhint" class="hint"></div>
+    <div class="grid2">
+      <div class="field"><label>🚗 Vehicle</label><input id="jf-vehicle" placeholder="2019 Honda Civic — black" value="${j?esc(j.vehicle||""):""}"></div>
+      <div class="field"><label>Pay method</label><select id="jf-paymethod">${payOpts}</select></div>
+    </div>`;
+}
+function bindJobForm(){
+  const svc=$("#jf-service"),priceI=$("#jf-price");
+  const fillDefault=()=>{const o=svc.selectedOptions[0];
+    if(svc.value!=="__custom"&&o&&o.dataset.price&&(!priceI.value||priceI.value==="0"))priceI.value=o.dataset.price;};
+  svc.onchange=()=>{
+    $("#jf-customwrap").style.display=svc.value==="__custom"?"":"none";
+    fillDefault(); // fills the service's default price only when the box is empty — never wipes a price you typed
+  };
+  if(editJob===null)fillDefault(); // brand-new job opens pre-filled with the service's default price
+  $("#jf-cust").onchange=()=>{const c=custById(+$("#jf-cust").value);$("#jf-address").value=c?(c.street||""):"";};
+  $("#jf-payfull").onclick=()=>{const p=+priceI.value||0;$("#jf-collected").value=p;updateBalHint();};
+  [priceI,$("#jf-collected")].forEach(i=>i.addEventListener("input",updateBalHint));
+  $("#jf-newcust").onclick=()=>{ // keep everything already typed — restored after the customer is saved
+    jobDraft=gatherJob(); jobDraft.address=$("#jf-address").value.trim();
+    dismissJob(); openCust(null); // dismiss, not close — the draft carries the typing, nothing must half-save
+    if(jobDraft.address)$("#cf-street").value=jobDraft.address;
+  };
+  updateBalHint();
+}
+function updateBalHint(){const p=+$("#jf-price").value||0,c=+$("#jf-collected").value||0;const bal=Math.max(0,p-c);
+  const el=$("#jf-balhint");if(!el)return;
+  el.innerHTML = p<=0?"" : bal>0?`Balance remaining: <b style="color:var(--red)">${money(bal)}</b>` : `<b style="color:var(--green)">Paid in full ✓</b>`;
+}
+function gatherJob(){
+  let service=$("#jf-service").value; if(service==="__custom")service=$("#jf-customsvc").value.trim()||"Custom service";
+  return {customerId:+$("#jf-cust").value||null,service,price:+$("#jf-price").value||0,
+    date:$("#jf-date").value||today(),time:$("#jf-time").value||"",recurring:"none",
+    status:$("#jf-status").value,vehicle:$("#jf-vehicle").value.trim(),notes:$("#jf-notes").value.trim(),
+    collected:+$("#jf-collected").value||0,payMethod:$("#jf-paymethod").value};
+}
+function saveJob(){
+  const data=gatherJob();
+  if(!data.customerId){toast("Pick a customer for this job","err");$("#jf-cust").focus();return;}
+  const cAddr=custById(data.customerId); // address box edits the customer's card (add / change / clear)
+  if(cAddr){const a=$("#jf-address").value.trim();if(a!==(cAddr.street||""))cAddr.street=a;}
+  let wasCompleted=false, j;
+  if(editJob){j=db.jobs.find(x=>x.id===editJob);wasCompleted=j.status==="completed";Object.assign(j,data);}
+  else{j=Object.assign({id:db.seqJ++,created:Date.now(),completedAt:0},data);db.jobs.push(j);}
+  if(j.status==="completed"&&!j.completedAt)j.completedAt=Date.now();
+  save(); dismissJob();
+  if($("#cust-overlay").classList.contains("show")&&editCust)openCust(editCust);
+  render(); toast("Job saved","ok");
+}
+function completeJob(id){
+  const j=db.jobs.find(x=>x.id===id);if(!j)return;
+  j.status="completed"; if(!j.completedAt)j.completedAt=Date.now();
+  // Done = done. Nothing gets re-booked, ever — the owner books the next visit himself.
+  // But money gets settled right here: paid jobs must never sit in Outstanding.
+  const owed=Math.max(0,(+j.price||0)-(+j.collected||0));
+  const paidNow=owed>0&&confirm(`Did you collect ${money(owed)}${+j.collected?" (the rest)":""} for this ${j.service}?\n\nOK = paid · Cancel = still owed`);
+  if(paidNow)j.collected=+j.price||0;
+  const c=custById(j.customerId);
+  if(c){c.log=c.log||[];c.log.push({t:Date.now(),m:`✓ Completed ${j.service} (${money(j.price)})${jobBalance(j)>0?" — unpaid":""}`});}
+  save();render();
+  const doneMsg=jobBalance(j)>0?`Job done — ${money(jobBalance(j))} outstanding`:"Job done — paid ✓";
+  if(c&&c.phone) toastAction(doneMsg,"💬 Ask for a review",()=>openSms(c,j,"Review"));
+  else toast(doneMsg,"ok");
+}
+function dismissJob(){$("#job-overlay").classList.remove("show");editJob=null;}
+function closeJob(){ // clicking out saves — but only if something was actually typed AND a customer exists
+  if(!$("#job-overlay").classList.contains("show"))return;
+  if(jobDirty&&(+$("#jf-cust").value))saveJob(); else dismissJob();
+}
+$("#job-save").onclick=saveJob;
+$("#job-cancel").onclick=dismissJob; // Cancel = explicit discard
+$("#job-close").onclick=closeJob;
+$("#job-delete").onclick=()=>{if(!editJob)return;if(!confirm("Delete this job? This can't be undone."))return;
+  db.jobs=db.jobs.filter(x=>x.id!==editJob);save();dismissJob();
+  if($("#cust-overlay").classList.contains("show")&&editCust)openCust(editCust);render();toast("Job deleted");};
+$("#job-text").onclick=()=>{const data=gatherJob();const c=custById(data.customerId);if(c)openSms(c,Object.assign({},data));};
+$("#job-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#job-overlay")))closeJob();});
+$("#job-quote").onclick=()=>{if(editJob)openQuote(editJob);};
+
+/* ---------------- Quote sheet / Accept & Sign ---------------- */
+function openQuote(id){
+  const j=db.jobs.find(x=>x.id===id); if(!j)return;
+  const cust0=custById(j.customerId)||{name:"",street:"",phone:""}, biz0=db.settings.business;
+  const foot=j.signature
+    ? `<div style="text-align:center"><img src="${esc(j.signature)}" alt="signature" style="max-height:90px;max-width:100%">
+         <div style="color:var(--muted);font-size:12.5px;margin-top:6px">Signed ${esc(fmtDateShort(localISO(new Date(j.signedAt||Date.now()))))}</div>
+         <button class="btn" id="quote-email" style="width:100%;justify-content:center;margin-top:12px">📧 Email the signed copy</button></div>`
+    : `<button class="btn btn-primary" id="quote-accept" style="width:100%;justify-content:center;padding:14px;font-size:15px">Accept &amp; Sign</button>`;
+  $("#quote-modal").innerHTML=`
+    <div class="modal-head" style="justify-content:flex-start"><button class="x" id="quote-back" style="border-radius:50%">&lsaquo;</button></div>
+    <div class="modal-body" style="padding:22px;text-align:center">
+      <div style="font-size:36px;font-weight:800">${money2(j.price)}</div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700">Total for this detail</div>
+      <div style="font-weight:600;margin-top:8px">${esc(j.vehicle||"Vehicle not specified")}</div>
+      <div style="color:var(--faint);font-size:12px">Due on completion</div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Prepared for</div>
+      <div style="text-align:left;margin-top:6px;font-weight:700;font-size:14.5px">${esc(cust0.name||"—")}${cust0.phone?`<span style="font-weight:600;color:var(--muted)"> · ${esc(fmtPhone(cust0.phone))}</span>`:""}</div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Services</div>
+      <div style="display:flex;gap:12px;text-align:left;margin:8px 0 4px;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;font-size:14.5px">${esc(j.service)}</div>
+          ${j.notes?`<div class="qnotes">${esc(j.notes)}</div>`:""}
+        </div>
+        <div style="font-weight:700;white-space:nowrap">${money2(j.price)}</div>
+      </div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Appointment</div>
+      <div style="display:flex;justify-content:space-between;text-align:left;margin:8px 0 4px;font-weight:700;font-size:14.5px">
+        <div>${esc(fmtDate(j.date))}${j.time?` · ${esc(fmtTime(j.time))}`:""}</div>
+        <div style="font-weight:600;color:var(--muted)">${esc(cust0.street||"")}</div>
+      </div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:800;margin-top:18px;text-align:left">Terms</div>
+      <div class="qnotes" style="text-align:left;margin-top:6px">Price covers the services listed above for the vehicle named above.
+        Heavy soiling, pet hair, stains or paint defects beyond a normal detail may need extra time — ${esc(biz0.name)} will quote
+        that before doing the work. Rescheduling is free with 24 hours’ notice. Payment is due when the detail is finished.</div>
+      <div id="quote-foot">${foot}</div>
+    </div>`;
+  $("#quote-back").onclick=closeQuote;
+  const acc=$("#quote-accept"); if(acc)acc.onclick=()=>signPad(id);
+  const em=$("#quote-email"); if(em)em.onclick=()=>emailSignedContract(id);
+  $("#quote-overlay").classList.add("show");
+}
+function closeQuote(){$("#quote-overlay").classList.remove("show");}
+/* A single offline HTML file cannot send mail by itself — there is no server to send it.
+   So hand the whole signed contract to whatever mail app the device already has, prefilled
+   and addressed; the owner just presses Send. Settings → Business info changes the address.
+   ponytail: mailto, not SMTP. Swap in a form service only if he wants it to send unattended. */
+function emailSignedContract(id){
+  const j=db.jobs.find(x=>x.id===id); if(!j)return;
+  const to=(db.settings.business.notify||"").trim();
+  if(!to){toast("Add a confirmation email in Settings first","err");return;}
+  const c=custById(j.customerId)||{name:"(no customer)",phone:"",street:""};
+  const b=db.settings.business;
+  const body=[
+    `${b.name} — signed detailing contract`,"",
+    `Customer:    ${c.name}`,
+    `Phone:       ${fmtPhone(c.phone)||"—"}`,
+    `Address:     ${c.street||"—"}`,
+    `Vehicle:     ${j.vehicle||"—"}`,"",
+    `Service:     ${j.service}`,
+    `Appointment: ${fmtDate(j.date)}${j.time?" at "+fmtTime(j.time):""}`,
+    `Price:       ${money2(j.price)}`,
+    j.notes?`Notes:       ${j.notes}`:"","",
+    `Accepted and signed ${new Date(j.signedAt||Date.now()).toLocaleString()}.`,
+    `The signature image is stored in the CRM against this job.`,
+  ].filter(l=>l!==""||true).join("\n");
+  const subj=`Signed — ${c.name} · ${j.service} · ${fmtDateShort(j.date)}`;
+  window.location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);
+}
+$("#quote-overlay").addEventListener("click",e=>{if(e.target===$("#quote-overlay"))closeQuote();});
+function signPad(id){
+  $("#quote-foot").innerHTML=`
+    <canvas id="sig-pad"></canvas>
+    <div class="hint" style="text-align:center">Sign with your finger</div>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-ghost" id="sig-clear" style="flex:1;justify-content:center">Clear</button>
+      <button class="btn btn-primary" id="sig-save" style="flex:1;justify-content:center">Save signature</button>
+    </div>`;
+  const cv=$("#sig-pad"),ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1;
+  cv.width=cv.offsetWidth*dpr; cv.height=cv.offsetHeight*dpr; ctx.scale(dpr,dpr);
+  ctx.strokeStyle="#fff"; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round";
+  let down=false,drew=false;
+  const pt=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  cv.addEventListener("pointerdown",e=>{down=true;cv.setPointerCapture(e.pointerId);const[x,y]=pt(e);ctx.beginPath();ctx.moveTo(x,y);});
+  cv.addEventListener("pointermove",e=>{if(!down)return;const[x,y]=pt(e);ctx.lineTo(x,y);ctx.stroke();drew=true;});
+  const end=()=>{down=false;};
+  cv.addEventListener("pointerup",end); cv.addEventListener("pointerleave",end);
+  $("#sig-clear").onclick=()=>{ctx.clearRect(0,0,cv.width,cv.height);drew=false;};
+  $("#sig-save").onclick=()=>{
+    if(!drew){toast("Sign first");return;}
+    const j=db.jobs.find(x=>x.id===id); if(!j)return;
+    j.signature=cv.toDataURL("image/png"); j.signedAt=Date.now();
+    const c=custById(j.customerId); if(c){c.log=c.log||[];c.log.push({t:Date.now(),m:"✍ Signed & accepted · "+money(j.price)});}
+    save(); toast("Signed ✓ — opening the confirmation email","ok"); openQuote(id); render();
+    setTimeout(()=>emailSignedContract(id),400); // let the sheet repaint first
+  };
+}
+
+/* ---------------- Texting ---------------- */
+function fillVars(text,c,j){
+  c=c||{};j=j||{};
+  const biz=db.settings.business||{};
+  const bal=j&&j.customerId?money(jobBalance(j)):(c.id?money(custBalance(c.id)):"");
+  return (text||"")
+    .replace(/\{firstname\}/gi,firstName(c.name))
+    .replace(/\{name\}/gi,c.name||"")
+    .replace(/\{phone\}/gi,fmtPhone(c.phone))
+    .replace(/\{address\}/gi,addrFull(c))
+    .replace(/\{business\}/gi,biz.name||"")
+    .replace(/\{service\}/gi,j.service||"")
+    .replace(/\{date\}/gi,j.date?fmtDate(j.date,{weekday:"long",month:"long",day:"numeric"}):"")
+    .replace(/\{time\}/gi,j.time?fmtTime(j.time):"")
+    .replace(/\{price\}/gi,j.price?money(j.price):"")
+    .replace(/\{balance\}/gi,bal);
+}
+function templateOptions(){return `<option value="">— blank —</option>`+db.settings.templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");}
+function openSms(c,j,tplName){
+  if(!c){toast("No customer to text","err");return;}
+  smsCtx={c,j:j||null};
+  $("#sms-title").textContent="Text "+c.name;
+  $("#sms-to").value=c.phone||"";
+  $("#sms-template").innerHTML=templateOptions();
+  let def=db.settings.templates[0]; // start on the first template (the appointment reminder)
+  if(tplName){const m=db.settings.templates.find(t=>t.name&&t.name.toLowerCase().indexOf(tplName.toLowerCase())===0);if(m)def=m;}
+  $("#sms-template").value=def?def.id:"";
+  applySmsTpl();
+  $("#sms-vars").innerHTML=["{firstname}","{service}","{date}","{time}","{balance}"].map(v=>`<button class="chip" data-ins="${v}">${v}</button>`).join("");
+  $("#sms-vars").querySelectorAll(".chip").forEach(b=>b.onclick=()=>insertAt($("#sms-body"),b.dataset.ins));
+  $("#sms-send").textContent="📱 Open in app";
+  $("#sms-note").innerHTML=`Opens your messaging app with the text pre-filled — just press send.`;
+  $("#sms-overlay").classList.add("show");
+}
+function applySmsTpl(){const t=db.settings.templates.find(x=>x.id===$("#sms-template").value);
+  $("#sms-body").value=t?fillVars(t.body,smsCtx.c,smsCtx.j):"";updateCounter();}
+function updateCounter(){const len=$("#sms-body").value.length,seg=Math.max(1,Math.ceil(len/160));
+  $("#sms-counter").textContent=`${len} characters · ${seg} message${seg>1?"s":""}`;}
+$("#sms-template").onchange=applySmsTpl;
+$("#sms-body").addEventListener("input",updateCounter);
+function closeSms(){$("#sms-overlay").classList.remove("show");smsCtx=null;}
+$("#sms-cancel").onclick=closeSms;$("#sms-close").onclick=closeSms;
+$("#sms-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#sms-overlay")))closeSms();});
+$("#sms-send").onclick=()=>{
+  const to=cleanNum($("#sms-to").value),body=$("#sms-body").value;
+  if(!to){toast("Enter a phone number","err");return;}
+  if(!body.trim()){toast("Message is empty","err");return;}
+  window.location.href="sms:"+to+"?body="+encodeURIComponent(body); logTextOnCust(smsCtx.c,body); closeSms(); render();
+};
+function logTextOnCust(c,body){if(!c)return;const cc=custById(c.id);if(!cc)return;
+  cc.log=cc.log||[];cc.log.push({t:Date.now(),m:"📱 Texted: "+body});save();}
+function insertAt(ta,text){const s=ta.selectionStart,e=ta.selectionEnd;ta.value=ta.value.slice(0,s)+text+ta.value.slice(e);
+  ta.selectionStart=ta.selectionEnd=s+text.length;ta.focus();updateCounter();}
+
+
+/* ---------------- Nav / global ---------------- */
+function drawer(open){$("#drawer").classList.toggle("open",open);$("#drawer-veil").classList.toggle("show",open);}
+document.querySelectorAll("#nav a").forEach(a=>a.onclick=()=>{view=a.dataset.view;render();drawer(false);});
+$("#menu-btn").onclick=()=>drawer(!$("#drawer").classList.contains("open"));
+$("#drawer-veil").onclick=()=>drawer(false);
+$("#add-job").onclick=()=>openJob(null);
+$("#fab-add").onclick=()=>openJob(null);
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&$("#drawer").classList.contains("open")){drawer(false);return;}
+  if(e.key==="Escape"){closeQuote();closePaste();closeSms();closeJob();closeCust();closeQuick();return;}
+  // Ctrl/⌘+Enter saves whichever editor is open — job takes priority since it can stack over the customer modal
+  if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){
+    if($("#job-overlay").classList.contains("show")){e.preventDefault();saveJob();}
+    else if($("#cust-overlay").classList.contains("show")){e.preventDefault();saveCust();}
+  }
+});
+
+/* ---------------- Import / Export ---------------- */
+function download(name,text,mime){const b=new Blob([text],{type:mime});const u=URL.createObjectURL(b);
+  const a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function backupDownload(){download(`banana-backup-${today()}.json`,JSON.stringify(db,null,2),"application/json");toast("Backup downloaded","ok");}
+$("#file-json").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result);if(!o.customers||!Array.isArray(o.customers))throw 0;
+    if(!confirm("Restore will REPLACE all current data with this backup. Continue?"))return;
+    db=normalize(o);save();render();toast("Backup restored","ok");}catch(err){toast("Invalid backup file","err");}};
+  r.readAsText(f);e.target.value="";};
+function csvCell(v){v=(v==null?"":String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function csvExport(){
+  const cols=["name","phone","email","street","city","state","zip","status","source","tags","total_paid","balance","notes"];
+  const rows=[cols.join(",")];
+  db.customers.forEach(c=>rows.push([c.name,c.phone,c.email,c.street,c.city,c.state,c.zip,c.status,c.source,(c.tags||[]).join("; "),custCollected(c.id),custBalance(c.id),c.notes].map(csvCell).join(",")));
+  download(`banana-customers-${today()}.csv`,rows.join("\n"),"text/csv");toast("CSV exported","ok");}
+$("#file-csv").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{importCSV(r.result);}catch(err){toast("Could not read CSV","err");}};r.readAsText(f);e.target.value="";};
+function parseCSV(text){const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else{if(ch==='"')q=true;else if(ch===","){row.push(cur);cur="";}else if(ch==="\n"){row.push(cur);rows.push(row);row=[];cur="";}else if(ch==="\r"){}else cur+=ch;}}
+  if(cur!==""||row.length){row.push(cur);rows.push(row);}return rows.filter(r=>r.some(c=>c.trim()!==""));}
+function importCSV(text){
+  const rows=parseCSV(text);if(rows.length<2){toast("Empty or header-only CSV","err");return;}
+  const H=rows[0].map(h=>h.trim().toLowerCase());const idx=(...names)=>{for(const n of names){const k=H.indexOf(n);if(k>=0)return k;}return -1;};
+  const iName=idx("name","full name","customer","contact"),iPhone=idx("phone","mobile","cell","tel"),iEmail=idx("email"),
+    iStreet=idx("street","address","address1"),iCity=idx("city"),iState=idx("state"),iZip=idx("zip","zipcode","postal"),
+    iStatus=idx("status","type"),iSource=idx("source"),iTags=idx("tags"),iNotes=idx("notes","note");
+  const nameI=iName>=0?iName:0;let added=0;
+  for(let i=1;i<rows.length;i++){const r=rows[i];const g=k=>k>=0?(r[k]||"").trim():"";
+    const name=(r[nameI]||"").trim();if(!name)continue;
+    const st=g(iStatus).toLowerCase();const status=st.includes("active")||st.includes("client")?"active":st.includes("inactive")?"inactive":"lead";
+    const tagsRaw=g(iTags);
+    db.customers.push({id:db.seqC++,name,phone:g(iPhone),email:g(iEmail),street:g(iStreet),city:g(iCity),state:g(iState),zip:g(iZip),
+      status,source:g(iSource),tags:tagsRaw?tagsRaw.split(/[;,]/).map(t=>t.trim()).filter(Boolean):[],access:"",notes:g(iNotes),followup:"",log:[],created:Date.now()});
+    added++;}
+  save();render();toast(`Imported ${added} customer${added!==1?"s":""}`,"ok");}
+
+/* ---------------- Auto-backup (File System Access API) ---------------- */
+const BK_META="banana.backupmeta", BK_DB="banana-fs", BK_STORE="handles";
+const fsSupported=typeof window!=="undefined"&&"showDirectoryPicker" in window&&typeof window.showDirectoryPicker==="function"&&typeof indexedDB!=="undefined"&&!!indexedDB;
+function bkMeta(){try{return JSON.parse(localStorage.getItem(BK_META))||{};}catch(e){return{};}}
+function bkSetMeta(p){localStorage.setItem(BK_META,JSON.stringify(Object.assign(bkMeta(),p)));}
+function snapshotName(d){const p=n=>String(n).padStart(2,"0");
+  return `banana-backup-${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}.json`;}
+function pruneSnapshots(names){const snaps=names.filter(n=>/^banana-backup-\d{4}-\d{2}-\d{2}\.json$/.test(n)).sort();
+  return snaps.slice(0,Math.max(0,snaps.length-8));}
+function idbHandle(mode,handle){return new Promise((res,rej)=>{const rq=indexedDB.open(BK_DB,1);
+  rq.onupgradeneeded=()=>rq.result.createObjectStore(BK_STORE);
+  rq.onerror=()=>rej(rq.error);
+  rq.onsuccess=()=>{const tx=rq.result.transaction(BK_STORE,mode==="get"?"readonly":"readwrite");
+    const st=tx.objectStore(BK_STORE);
+    const op=mode==="get"?st.get("dir"):st.put(handle,"dir");
+    op.onsuccess=()=>res(op.result);op.onerror=()=>rej(op.error);};});}
+let bkHandle=null,bkTimer=null,bkState="off"; // off|ok|prompt|unsupported
+async function initAutoBackup(){
+  if(!fsSupported){bkState="unsupported";paintBackupChip();return;}
+  try{bkHandle=await idbHandle("get");}catch(e){bkHandle=null;}
+  if(!bkHandle){bkState="off";paintBackupChip();return;}
+  try{const q=await bkHandle.queryPermission({mode:"readwrite"});
+    bkState=q==="granted"?"ok":"prompt";}catch(e){bkState="prompt";}
+  paintBackupChip();
+  if(bkState==="ok")scheduleBackup(1200);
+}
+async function setupAutoBackup(){
+  if(!fsSupported){toast("This browser can't do folder backups — use ⬇ Backup now instead","err");return;}
+  try{bkHandle=await window.showDirectoryPicker({mode:"readwrite"});}catch(e){return;} // user cancelled
+  try{await idbHandle("put",bkHandle);}catch(e){}
+  bkState="ok";paintBackupChip();await backupNow();toast("Auto-backup is on ✓","ok");
+  if(view==="settings")renderSettings();
+}
+async function rearmBackup(){
+  if(!bkHandle)return setupAutoBackup();
+  try{const p=await bkHandle.requestPermission({mode:"readwrite"});
+    if(p==="granted"){bkState="ok";paintBackupChip();scheduleBackup(500);toast("Auto-backup resumed ✓","ok");}}catch(e){}
+}
+async function backupNow(){
+  if(bkState!=="ok"||!bkHandle)return false;
+  try{
+    const json=JSON.stringify(db,null,2);
+    async function writeFile(name){const fh=await bkHandle.getFileHandle(name,{create:true});
+      const w=await fh.createWritable();await w.write(json);await w.close();}
+    await writeFile("banana-backup-latest.json");
+    const todaySnap=snapshotName(new Date());
+    if(bkMeta().lastSnapshot!==todaySnap){await writeFile(todaySnap);
+      const names=[];for await(const [n] of bkHandle.entries())names.push(n);
+      for(const dead of pruneSnapshots(names))
+        try{await bkHandle.removeEntry(dead);}catch(e){}
+      bkSetMeta({lastSnapshot:todaySnap});}
+    bkSetMeta({lastBackup:Date.now()});paintBackupChip();return true;
+  }catch(e){
+    if(e&&(e.name==="NotAllowedError"||e.name==="SecurityError")){bkState="prompt";paintBackupChip();}
+    return false;
+  }
+}
+function scheduleBackup(delay){if(bkState!=="ok")return;
+  clearTimeout(bkTimer);bkTimer=setTimeout(backupNow,delay==null?5000:delay);}
+function relTime(ts){if(!ts)return"never";const m=Math.round((Date.now()-ts)/60000);
+  if(m<1)return"just now";if(m<60)return m+"m ago";const h=Math.round(m/60);
+  if(h<24)return h+"h ago";return Math.round(h/24)+"d ago";}
+function paintBackupChip(){const el=$("#backup-chip");if(!el)return;const t=$("#backup-text");
+  el.className="helper-status "+(bkState==="ok"?"on":"");el.style.cursor="pointer";
+  const led=el.querySelector(".led");
+  if(bkState==="ok"){t.textContent="☁ Backed up · "+relTime(bkMeta().lastBackup);}
+  else if(bkState==="prompt"){t.textContent="⚠ Backup needs a click";if(led)led.style.background="#fbbf24";}
+  else if(bkState==="unsupported"){t.textContent="Backups: manual only";}
+  else{t.textContent="Auto-backup: off — Settings";}
+  paintAutobackupCard();
+}
+function paintAutobackupCard(){
+  const st=$("#ab-state"),btn=$("#ab-setup");if(!st||!btn)return;
+  if(!fsSupported){st.textContent="not available in this browser — use ⬇ Backup now below";btn.style.display="none";return;}
+  if(bkState==="ok"){st.textContent="ON — saving to your chosen folder ✓";btn.textContent="Change folder";}
+  else if(bkState==="prompt"){st.textContent="needs one click to resume";btn.textContent="Resume auto-backup";}
+  else{st.textContent="off — one-time setup takes ~10 seconds";btn.textContent="Set up auto-backup";}
+  btn.onclick=()=>{bkState==="prompt"?rearmBackup():setupAutoBackup();};
+}
+$("#backup-chip").onclick=()=>{
+  if(bkState==="prompt")rearmBackup();
+  else if(bkState==="off")setupAutoBackup();
+  else if(bkState==="ok")backupNow().then(ok=>{if(ok)toast("Backed up ✓","ok");});
+  else backupDownload();
+};
+
+/* ---------------- Cloud sync (private GitHub Gist — PC ⇄ phone) ---------------- */
+const SYNC_KEY="banana.synckey",SYNC_GIST="banana.syncgist",SYNC_LAST="banana.synclast",GIST_FILE="banana-db.json";
+let syncState="off",syncBusy=false,syncTimer=null; // off|ok|err
+function syncToken(){return localStorage.getItem(SYNC_KEY)||"";}
+async function gh(method,url,body){
+  const res=await fetch("https://api.github.com"+url,{method,
+    headers:{"Authorization":"Bearer "+syncToken(),"Accept":"application/vnd.github+json","Content-Type":"application/json"},
+    body:body?JSON.stringify(body):undefined});
+  if(!res.ok)throw new Error("GitHub "+res.status+(res.status===401?" — check the token":""));
+  return res.json();
+}
+async function syncFindGist(){
+  let id=localStorage.getItem(SYNC_GIST);
+  if(id)return id;
+  const list=await gh("GET","/gists?per_page=100");
+  const hit=list.find(g=>g.files&&g.files[GIST_FILE]);
+  if(hit){localStorage.setItem(SYNC_GIST,hit.id);return hit.id;}
+  return null;
+}
+async function syncFetchRemote(id){
+  const g=await gh("GET","/gists/"+id);
+  const f=g.files&&g.files[GIST_FILE]; if(!f)return null;
+  let text=f.content;
+  if(f.truncated){const r=await fetch(f.raw_url);text=await r.text();}
+  const remote=JSON.parse(text);
+  return (remote&&Array.isArray(remote.customers))?remote:null;
+}
+/* On load / app-foreground: adopt the cloud copy if it's newer than this device's. */
+async function syncPull(){
+  if(!syncToken())return false;
+  try{
+    const id=await syncFindGist();
+    if(!id){syncState="ok";paintSyncChip();return false;}
+    const remote=await syncFetchRemote(id);
+    syncState="ok";
+    if(remote&&(remote.updatedAt||0)>(db.updatedAt||0)){
+      db=normalize(remote);
+      localStorage.setItem(KEY,JSON.stringify(db)); // direct write — save() would push right back
+      // the adopted copy may pre-date this device's baked imports (LWW races) — re-apply, save() pushes back
+      render();toast("🔄 Synced from your other device ✓","ok");
+    }
+    paintSyncChip();return true;
+  }catch(e){syncState="err";paintSyncChip();return false;}
+}
+async function syncPush(){
+  if(!syncToken()||syncBusy)return;
+  syncBusy=true;
+  try{
+    const id=await syncFindGist();
+    const payload={description:"Banana Detailing CRM — synced data (auto-managed, don't edit)",public:false,
+      files:{[GIST_FILE]:{content:JSON.stringify(db)}}};
+    if(id)await gh("PATCH","/gists/"+id,payload);
+    else{const g=await gh("POST","/gists",payload);localStorage.setItem(SYNC_GIST,g.id);}
+    syncState="ok";localStorage.setItem(SYNC_LAST,String(Date.now()));
+  }catch(e){syncState="err";}
+  syncBusy=false;paintSyncChip();
+}
+function scheduleSync(){if(!syncToken())return;clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,4000);}
+function paintSyncChip(){
+  const el=$("#sync-chip");if(!el)return;const t=$("#sync-text");
+  el.className="helper-status "+(syncState==="ok"?"on":"");el.style.cursor="pointer";
+  const led=el.querySelector(".led");if(led)led.style.background=syncState==="err"?"#fbbf24":"";
+  if(!syncToken())t.textContent="Cloud sync: off — Settings";
+  else if(syncState==="err")t.textContent="⚠ Sync error — click to retry";
+  else{const ts=+localStorage.getItem(SYNC_LAST)||0;t.textContent="🔄 Synced · "+(ts?relTime(ts):"just set up");}
+  if(typeof paintSyncCard==="function")paintSyncCard();
+}
+function paintSyncCard(){
+  const st=$("#sync-state");if(!st)return;
+  if(!syncToken())st.textContent="off — paste your GitHub token below (one-time, both devices)";
+  else if(syncState==="err")st.textContent="⚠ error — check the token and click the sync chip in the menu to retry";
+  else st.textContent="ON — this device pushes every change and pulls on open ✓";
+}
+/* Pairing: entering the token on a device decides pull-vs-push explicitly (never clobbers blindly). */
+async function syncConnect(token){
+  localStorage.setItem(SYNC_KEY,token);
+  try{
+    const id=await syncFindGist();
+    if(id){
+      const remote=await syncFetchRemote(id);
+      if(remote&&confirm(`Cloud data found: ${remote.customers.length} customers, ${remote.jobs.length} jobs.\n\nOK = load the CLOUD data onto THIS device (normal for a new phone).\nCancel = overwrite the cloud with THIS device's data.`)){
+        db=normalize(remote);db.updatedAt=Date.now();
+        localStorage.setItem(KEY,JSON.stringify(db));render();toast("🔄 Cloud data loaded onto this device ✓","ok");
+      }else{await syncPush();toast("🔄 Cloud updated from this device ✓","ok");}
+    }else{await syncPush();toast("🔄 Sync is on — this device seeded the cloud ✓","ok");}
+    syncState="ok";
+  }catch(e){syncState="err";toast("Sync setup failed: "+e.message,"err");}
+  paintSyncChip();if(view==="settings")renderSettings();
+}
+$("#sync-chip").onclick=async()=>{ // manual sync always says what happened — silence read as "broken"
+  if(!syncToken()){view="settings";render();return;}
+  toast("🔄 Syncing…");
+  await syncPull(); await syncPush();
+  toast(syncState==="err"?"⚠ Sync failed — check the token in Settings":`🔄 Sync complete · ${db.customers.length} customers, ${db.jobs.length} jobs`,syncState==="err"?"err":"ok");
+};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncPull();}); // phone: pull when the app comes to the foreground
+let __rsz=null,__rw=window.innerWidth; // charts draw at container width — rebuild on rotation only.
+// iOS fires resize for the keyboard and URL bar too (height-only) — re-rendering then steals input focus mid-typing.
+window.addEventListener("resize",()=>{clearTimeout(__rsz);__rsz=setTimeout(()=>{
+  if(window.innerWidth===__rw)return; __rw=window.innerWidth;
+  if(view==="dashboard"||view==="money")render();},250);});
+
+/* ---------------- Paste import ---------------- */
+function parseLooseDate(s){
+  s=(s||"").trim().toLowerCase(); if(!s)return"";
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  const months=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  const pad=n=>String(n).padStart(2,"0");
+  const slash=s.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+  let y=new Date().getFullYear(),mon=null,day=null,explicitYear=false;
+  if(slash){mon=+slash[1]-1;day=+slash[2];if(slash[3]){y=+slash[3];if(y<100)y+=2000;explicitYear=true;}}
+  else{const mM=s.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);const dM=s.match(/(\d{1,2})(?:st|nd|rd|th)?/);
+    if(mM)mon=months.indexOf(mM[1]);if(dM)day=+dM[1];const yM=s.match(/\b(20\d{2})\b/);if(yM){y=+yM[1];explicitYear=true;}}
+  if(mon==null||day==null||mon<0)return"";
+  let ds=`${y}-${pad(mon+1)}-${pad(day)}`;
+  if(!explicitYear&&ds>today())ds=`${y-1}-${pad(mon+1)}-${pad(day)}`; // a future month/day with no year => last year
+  return ds;
+}
+function findCust(name,phone){
+  const ph=cleanNum(phone);
+  // If a phone is given, match ONLY by phone — different phone = different person (two "John"s stay separate).
+  if(ph)return db.customers.find(c=>cleanNum(c.phone)===ph)||null;
+  // No phone given: match by name only among customers that also have no phone.
+  const n=(name||"").trim().toLowerCase();
+  return db.customers.find(c=>(c.name||"").trim().toLowerCase()===n&&!cleanNum(c.phone))||null;
+}
+function openPaste(){
+  $("#paste-service").innerHTML=db.settings.services.map(s=>`<option>${esc(s.name)}</option>`).join("")+`<option>Other</option>`;
+  pastePreview();
+  $("#paste-overlay").classList.add("show");
+  setTimeout(()=>$("#paste-text").focus(),50);
+}
+function closePaste(){$("#paste-overlay").classList.remove("show");}
+function pasteLines(){return $("#paste-text").value.split("\n").map(l=>l.trim()).filter(Boolean);}
+function pastePreview(){const n=pasteLines().length;$("#paste-count").textContent=n?`${n} client${n!==1?"s":""} ready to import`:"Paste at least one line.";}
+function importClientRows(lines,completed,service){
+  let newCust=0,jobs=0,skipped=0;
+  for(const line of lines){
+    const p=line.split(";").map(x=>x.trim());
+    const name=p[0]; if(!name)continue;
+    const address=p[1]||"",phone=p[2]||"",priceRaw=p[3]||"",dateRaw=p[4]||"";
+    const noteParts=p.slice(5).filter(Boolean);
+    const price=+String(priceRaw).replace(/[^\d.]/g,"")||0;
+    const date=parseLooseDate(dateRaw)||today();
+    let cust=findCust(name,phone);
+    if(!cust){cust={id:db.seqC++,name,phone:phone?(cleanNum(phone)||phone):"",email:"",street:address,city:"",state:"",zip:"",
+      status:"active",source:"",tags:[],access:"",notes:"",followup:"",log:[],created:Date.now()};db.customers.push(cust);newCust++;}
+    else{if(address&&!cust.street)cust.street=address;if(phone&&!cust.phone)cust.phone=cleanNum(phone)||phone;if(cust.status==="lead")cust.status="active";}
+    // skip a duplicate sale (same customer + date + price + service) so money never double-counts on re-import
+    const dup=db.jobs.some(j=>j.customerId===cust.id&&j.date===date&&(+j.price||0)===price&&j.service===service);
+    if(dup){skipped++;continue;}
+    db.jobs.push({id:db.seqJ++,customerId:cust.id,service,price,date,time:"",recurring:"none",
+      status:completed?"completed":"scheduled",collected:completed?price:0,payMethod:"",
+      vehicle:"",notes:noteParts.join(" "),created:Date.now(),completedAt:completed?Date.now():0});
+    jobs++;
+  }
+  return {newCust,jobs,skipped};
+}
+function doPasteImport(){
+  const lines=pasteLines(); if(!lines.length){toast("Nothing to import","err");return;}
+  const completed=$("#paste-completed").checked, service=$("#paste-service").value||"Service";
+  const r=importClientRows(lines,completed,service);
+  save();closePaste();$("#paste-text").value="";view="customers";render();
+  toast(`Imported ${r.jobs} sale${r.jobs!==1?"s":""} · ${r.newCust} new client${r.newCust!==1?"s":""}${r.skipped?` · ${r.skipped} duplicate skipped`:""}`,"ok");
+}
+$("#paste-close").onclick=closePaste;$("#paste-cancel").onclick=closePaste;
+$("#paste-import").onclick=doPasteImport;
+$("#paste-text").addEventListener("input",pastePreview);
+$("#paste-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#paste-overlay")))closePaste();});
+
+/* ---------------- Quick add (✨ text → leads) ---------------- */
+/* Free local parser — plain speech in, structured client + job out. No AI needed.
+   "Judy today at 12 for 249 full detail" => Judy, Full Detail (In & Out), today 12:00, $249, done & paid.
+   "ina, 647 570 4675 15 codsell 149$"          => lead with phone/address and a quoted price. */
+const QA_SERVICES=[["full detail","Full Detail (In & Out)"],["interior","Interior Detail"],
+  ["exterior","Exterior Detail"],["paint correction","Paint Correction (1-Step)"],["polish","Paint Correction (1-Step)"],
+  ["buff","Paint Correction (1-Step)"],["ceramic","Ceramic Coating"],["coating","Ceramic Coating"],
+  ["engine","Engine Bay Cleaning"],["headlight","Headlight Restoration"],["pet hair","Pet Hair Removal"],
+  ["odor","Odor / Ozone Treatment"],["ozone","Odor / Ozone Treatment"],["wax","Express Wash & Wax"],
+  ["wash","Express Wash & Wax"],["detail","Full Detail (In & Out)"]];
+function quickParseLine(line){
+  let s=(line||"").trim(); if(!s)return null;
+  const out={name:"",phone:"",address:"",price:0,notes:"",date:"",time:"",service:"",job:false,items:[],dateGiven:false,past:false};
+  const eat=re=>{const m=s.match(re);if(m)s=s.replace(m[0]," ");return m;};
+  let m=eat(/(\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/); if(m)out.phone=cleanNum(m[0]);
+  // A time needs am/pm, ":MM", or a plain 1–12 — "at 49 Burnwood" is an ADDRESS and must not be eaten
+  const scanTime=re=>{const g=new RegExp(re.source,"ig");let mm;
+    while((mm=g.exec(s))){const h=+mm[1];
+      if(h>23||(mm[2]&&+mm[2]>59))continue;
+      if(!mm[3]&&!mm[2]&&(h<1||h>12))continue;
+      s=s.replace(mm[0]," ");return mm;}
+    return null;};
+  m=scanTime(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/)||scanTime(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+  if(m){let h=+m[1];const ap=(m[3]||"").toLowerCase();
+    if(ap==="pm"&&h<12)h+=12; else if(ap==="am"&&h===12)h=0; else if(!ap&&h>=1&&h<8)h+=12; // bare 1–7 = afternoon
+    out.time=String(h).padStart(2,"0")+":"+(m[2]||"00");out.job=true;}
+  if(eat(/\b(?:today|tonight)\b/i)){out.date=today();out.job=true;out.dateGiven=true;}
+  else if(eat(/\b(?:tomm?orr?ow|tomorow|tmrw|tmr|tmw)\b/i)){out.date=offset(1);out.job=true;out.dateGiven=true;} // misspellings must not silently become "today, done & paid"
+  else if(eat(/\byesterday\b/i)){out.date=offset(-1);out.job=true;out.dateGiven=true;out.past=true;}
+  else{
+    const wd=["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+    m=eat(new RegExp("\\b(?:next\\s+|this\\s+)?("+wd.join("|")+")\\b","i"));
+    if(m){const want=wd.indexOf(m[1].toLowerCase()),d=new Date();
+      d.setDate(d.getDate()+((want-d.getDay()+7)%7));out.date=localISO(d);out.job=true;out.dateGiven=true;}
+    else{m=eat(/\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}(?:st|nd|rd|th)?|\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/i);
+      if(m){const d=parseLooseDate(m[1]);if(d){out.date=d;out.job=true;out.dateGiven=true;}}}
+  }
+  if(/\b(did|done|finished|completed|washed|cleaned|logged|had)\b/i.test(s)){out.job=true;out.past=true;
+    s=s.replace(/\b(did|done|finished|completed|washed|cleaned|logged|had)\b/ig," ");}
+  if(/\b(scheduled|booked)\b/i.test(s)){out.job=true;
+    s=s.replace(/\b(scheduled|booked)\b/ig," ");}
+  if(eat(/\bexterior\b/i))out.notes="exterior"; else if(eat(/\binterior\b/i))out.notes="interior";
+  // Each comma/"and" chunk can carry its own service + price: "Judy today 249 windows, 149 gutters" = 2 jobs.
+  const rests=[];
+  for(const seg of s.split(/[,;&]+|\band\b|\bplus\b/i)){
+    let t=seg,price=0,paid=false,service="";
+    let mm=t.match(/\$\s?(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s?\$/);
+    if(mm){price=+(mm[1]||mm[2])||0;t=t.replace(mm[0]," ");}
+    if(!price){mm=t.match(/\b(?:for|paid|collected|charged|quoted)\s+\$?(\d{2,5}(?:\.\d{1,2})?)\b/i);
+      if(mm){price=+mm[1];paid=true;if(/paid|collected|charged/i.test(mm[0]))out.past=true;t=t.replace(mm[0]," ");}} // "paid 249" = already happened
+    for(const[kw,svc]of QA_SERVICES){const re=new RegExp("\\b"+kw.replace(" ","\\s+")+"[a-z]*\\b","i");
+      if(re.test(t)){service=svc;
+        if(!price){ // bare number touching the service word is its price: "249 windows" / "windows 249"
+          const kre=kw.replace(" ","\\s+")+"[a-z]*";
+          const m2=t.match(new RegExp("\\b(\\d{2,5})\\s+"+kre+"\\b|\\b"+kre+"\\s+(\\d{2,5})\\b","i"));
+          if(m2&&+(m2[1]||m2[2])>=20){price=+(m2[1]||m2[2]);t=t.replace(m2[0]," ");}
+        }
+        t=t.replace(re," ");break;}}
+    if(price||service){out.items.push({service,price});out.job=true;} // a price means a booking, not just a note on a lead
+    rests.push(t);
+  }
+  s=rests.join(" ");
+  s=s.replace(/(\w)['’]s\b/g,"$1") // "Tina's windows" → Tina
+     .replace(/[.:!?]+/g," ")
+     .replace(/\b(for|at|on|in|to|with|from|and|her|his|him|she|he|the|a|an|i|we|of|house|home|this|next|new|add|log|book|client|lead|customer|guy|lady|mr|mrs|ms)\b/ig," ");
+  const toks=s.replace(/\s+/g," ").trim().split(" ").filter(Boolean);
+  let i=0,nameToks=[];
+  while(i<toks.length&&!/\d/.test(toks[i])&&nameToks.length<3){nameToks.push(toks[i]);i++;} // name = leading words before the first digit
+  out.name=nameToks.map(w=>w[0].toUpperCase()+w.slice(1)).join(" ");
+  out.address=toks.slice(i).join(" ");
+  if(!out.name&&!out.phone)return null;
+  if(out.job){
+    if(!out.items.length)out.items.push({service:"",price:0});
+    for(const it of out.items)if(!it.service)it.service="Full Detail (In & Out)";
+    if(!out.date)out.date=today();
+    if(!out.items[0].price){ // trailing lone number = the price: "sergey 49 burnwood 3:30pm 349"
+      const mt=out.address.match(/(?:^|\s)(\d{2,5})$/);
+      if(mt&&+mt[1]>=20){out.items[0].price=+mt[1];out.address=out.address.slice(0,mt.index).trim();}
+    }
+  }
+  out.price=out.items.length?out.items[0].price:0;
+  out.service=out.items.length?out.items[0].service:"";
+  return out;
+}
+function quickCommit(rows,status){
+  let added=0,updated=0,jobs=0;
+  for(const r of rows){
+    let c=findCust(r.name,r.phone);
+    if(!c&&r.name){ // "Judy" alone should find the existing Judy even though she has a phone on file
+      const n=r.name.trim().toLowerCase();
+      let cands=db.customers.filter(x=>(x.name||"").trim().toLowerCase()===n);
+      if(!cands.length) // "Tina" should still find "Tina Moroz" — first-name match, only when unambiguous
+        cands=db.customers.filter(x=>(x.name||"").trim().toLowerCase().split(/\s+/)[0]===n.split(/\s+/)[0]);
+      if(cands.length===1)c=cands[0];
+    }
+    const note=[!r.job&&r.price?("Quoted "+money(r.price)):"",(!r.job&&r.notes)||""].filter(Boolean).join(" · ");
+    if(!c){c={id:db.seqC++,name:r.name,phone:r.phone||"",email:"",street:r.address||"",city:"",state:"",zip:"",
+      status:r.job?"active":status,source:"",tags:[],access:"",notes:note,followup:"",
+      log:[{t:Date.now(),m:"✨ Added via Quick add"}],created:Date.now()};
+      db.customers.push(c);added++;}
+    else{if(r.address&&!c.street)c.street=r.address;if(r.phone&&!cleanNum(c.phone))c.phone=r.phone;
+      if(note)c.notes=c.notes?(c.notes+"\n"+note):note;updated++;}
+    if(r.job){
+      // completed & paid ONLY on an explicit past/now signal ("today", "yesterday", "did", "paid") —
+      // a price alone books an upcoming job, it never invents collected money
+      const done=r.date<=today()&&(r.past||r.dateGiven);
+      const items=(r.items&&r.items.length)?r.items:[{service:r.service,price:r.price}];
+      for(const it of items){
+        db.jobs.push({id:db.seqJ++,customerId:c.id,service:it.service,price:it.price||0,date:r.date,time:r.time||"",
+          recurring:"none",status:done?"completed":"scheduled",collected:done?(it.price||0):0,payMethod:"",
+          vehicle:"",notes:r.notes||"",created:Date.now(),completedAt:done?Date.now():0});
+        jobs++;
+      }
+      c.log=c.log||[];c.log.push({t:Date.now(),m:`✨ Quick add: ${done?"logged":"booked"} ${items.map(it=>it.service+(it.price?" "+money(it.price):"")).join(" + ")}`});
+    }
+  }
+  save();return{added,updated,jobs};
+}
+let qaRows=[],qaStatus="lead";
+function openQuick(){qaRows=[];
+  $("#qa-text").value="";$("#qa-preview").innerHTML="";$("#qa-note").style.display="none";
+  qaPaint();$("#qa-overlay").classList.add("show");setTimeout(()=>$("#qa-text").focus(),50);}
+function closeQuick(){$("#qa-overlay").classList.remove("show");}
+function qaParseText(){qaRows=$("#qa-text").value.split("\n").map(quickParseLine).filter(Boolean);qaPaintPreview();}
+function qaPaintPreview(){
+  $("#qa-preview").innerHTML=qaRows.length?`<div class="sec">Ready to add</div>`+qaRows.map(r=>{
+    const known=r.name&&db.customers.some(x=>(x.name||"").trim().toLowerCase()===r.name.toLowerCase());
+    const who=`${esc(r.name)}${known?` <span class="badge b-active" style="font-size:10.5px">known client</span>`:""}`;
+    const its=(r.items&&r.items.length)?r.items:[{service:r.service,price:r.price}];
+    const sub=r.job
+      ?`${its.map(it=>esc(it.service)+(it.price?" "+money(it.price):"")).join(" + ")} · ${fmtDateShort(r.date)}${r.time?" "+fmtTime(r.time):""} · ${r.date<=today()&&(r.past||r.dateGiven)?"✓ done &amp; paid":"📅 booked"}${r.notes?" · "+esc(r.notes):""}`
+      :`${esc(fmtPhone(r.phone)||"no phone")} · ${esc(r.address||"no address")}${r.price?" · quoted "+money(r.price):""}`;
+    return `<div class="jobline" style="cursor:default">
+    <div class="avatar" style="background:${avatarColor(r.name)};width:32px;height:32px;font-size:12px">${esc(initials(r.name))}</div>
+    <div class="jl-svc">${who}<small>${sub}</small></div></div>`;}).join(""):"";
+  qaPaint();
+}
+function qaPaint(){
+  $("#qa-add").disabled=!qaRows.length;
+  const nj=qaRows.reduce((s,r)=>s+(r.job?((r.items&&r.items.length)||1):0),0),np=qaRows.filter(r=>!r.job).length;
+  $("#qa-add").textContent=qaRows.length?`Add ${[nj?nj+" job"+(nj>1?"s":""):"",np?np+" "+(qaStatus==="lead"?"lead":"client")+(np>1?"s":""):""].filter(Boolean).join(" + ")}`:"Add";
+}
+$("#quick-add").onclick=openQuick;
+$("#qa-close").onclick=closeQuick;$("#qa-cancel").onclick=closeQuick;
+$("#qa-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#qa-overlay")))closeQuick();});
+$("#qa-text").addEventListener("input",qaParseText);
+$("#qa-status").querySelectorAll("button").forEach(b=>b.onclick=()=>{qaStatus=b.dataset.qs;
+  $("#qa-status").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));qaPaint();});
+$("#qa-add").onclick=()=>{
+  if(!qaRows.length)return;
+  const hadJobs=qaRows.some(r=>r.job);
+  const r=quickCommit(qaRows,qaStatus);
+  closeQuick();
+  if(hadJobs){view="dashboard";}else{view="customers";custFilter=qaStatus==="lead"?"lead":"all";}
+  render();
+  toast(`✨ ${r.jobs?r.jobs+" job"+(r.jobs>1?"s":"")+" logged, ":""}${r.added} new, ${r.updated} updated`,"ok");
+};
+
+/* ---------------- Go ---------------- */
+render();
+initAutoBackup();setInterval(paintBackupChip,60000);
+syncPull();paintSyncChip();setInterval(paintSyncChip,60000);
+// iOS home-screen app: guarantee the floating chrome clears the status bar / Dynamic Island,
+// even when env(safe-area-inset-top) resolves to 0 (iOS caches install-time settings).
+(function fixSafeArea(){
+  if(!navigator.standalone)return; // true only for iOS Add-to-Home-Screen apps
+  const probe=document.createElement("div");
+  probe.style.cssText="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden";
+  document.body.appendChild(probe);
+  const inset=probe.offsetHeight; probe.remove();
+  const pad=Math.max(inset,59); // Dynamic Island reports ~59px; fall back to that when env() lies
+  document.documentElement.style.setProperty("--safetop",pad+"px"); // content, drawer AND modal overlays read this
+})();
+</script>
+</body>
+</html>
