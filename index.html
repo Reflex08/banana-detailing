@@ -600,7 +600,9 @@ const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt
 function money(n){n=+n||0;const neg=n<0;n=Math.abs(n);
   const s=n%1===0?n.toLocaleString():n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   return (neg?"-$":"$")+s;}
-function money2(n){return "$"+(+n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+/* Locale pinned: these print a "$", so a device set to a comma-decimal locale would
+   otherwise render a Canadian invoice as "$100,00". */
+function money2(n){return "$"+(+n||0).toLocaleString("en-CA",{minimumFractionDigits:2,maximumFractionDigits:2});}
 function avatarColor(name){let h=0;for(let i=0;i<name.length;i++)h=name.charCodeAt(i)+((h<<5)-h);
   const c=["#38bdf8","#34d399","#a78bfa","#fbbf24","#fb7185","#2ab8e8","#f472b6","#a3e635"];return c[Math.abs(h)%c.length];}
 function initials(name){const p=(name||"").trim().split(/\s+/);return ((p[0]||"")[0]||"?").toUpperCase()+((p[1]||"")[0]||"").toUpperCase();}
@@ -617,10 +619,6 @@ function fmtDow(d){if(!d)return"";const x=new Date(d+"T00:00:00");return x.toLoc
 function fmtTime(t){if(!t)return"";const[h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";const hh=((h+11)%12)+1;return `${hh}:${String(m).padStart(2,"0")} ${ap}`;}
 function fmtWhen(ts){return new Date(ts).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
 function toast(m,kind){const t=$("#toast");clearTimeout(toastTimer);t.textContent=m;t.className="toast show"+(kind?(" "+kind):"");toastTimer=setTimeout(()=>t.className="toast",kind==="err"?3400:2300);}
-function toastAction(m,btnLabel,fn){const t=$("#toast");clearTimeout(toastTimer);t.textContent=m;
-  const b=document.createElement("button");b.className="btn sm btn-primary";b.style.marginLeft="10px";b.textContent=btnLabel;
-  b.onclick=()=>{clearTimeout(toastTimer);t.className="toast";fn();};
-  t.appendChild(b);t.className="toast show ok";toastTimer=setTimeout(()=>t.className="toast",8000);}
 function addr1(c){return [c.street].filter(Boolean).join("");}
 function addrFull(c){const cityzip=[c.city,c.state].filter(Boolean).join(", ")+(c.zip?" "+c.zip:"");return [c.street,cityzip.trim()].filter(x=>x&&x.trim()).join(", ");}
 function mapsUrl(c){return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addrFull(c));}
@@ -1690,10 +1688,10 @@ function completeJob(id){
   if(c){c.log=c.log||[];c.log.push({t:Date.now(),m:`✓ Completed ${j.service} (${money(j.price)})${jobBalance(j)>0?" — unpaid":""}`});}
   save();render();
   const doneMsg=jobBalance(j)>0?`Job done — ${money(jobBalance(j))} outstanding`:"Job done — paid ✓";
-  if(c&&c.phone) toastAction(doneMsg,"💬 Ask for a review",()=>openSms(c,j,
-    `Hi ${firstName(c.name)}, thanks for having us today! If you're happy with how it turned out, `+
-    `a quick Google review would mean a lot. — ${db.settings.business.name||""}`));
-  else toast(doneMsg,"ok");
+  toast(doneMsg,"ok");
+  // Straight into the post-job message rather than a toast button that is easy to miss.
+  // Closing it without sending costs nothing: the job is already saved and done.
+  if(c&&c.phone)setTimeout(()=>openSms(c,j,postJobMessage(c,j),true),260);
 }
 function dismissJob(){$("#job-overlay").classList.remove("show");editJob=null;}
 /* Clicking out saves, but only when there is something worth saving. In new-client mode
@@ -1809,10 +1807,29 @@ function fillVars(text,c,j){
     .replace(/\{price\}/gi,j.price?money(j.price):"")
     .replace(/\{balance\}/gi,bal);
 }
-function openSms(c,j,preset){
+/* Paste Igor's Google review link here and the post-job message starts carrying it.
+   Google Business Profile -> "Ask for reviews" gives a https://g.page/r/..../review link. */
+const REVIEW_URL="";
+/* The text that goes out the moment a job is marked done. One message, not a template
+   list: thanks, what was done, the balance if there is one, and the review link once
+   there is one. Igor can edit every word of it before it sends. */
+function postJobMessage(c,j){
+  const biz=(db.settings.business||{}).name||"";
+  const bal=jobBalance(j);
+  return `Hi ${firstName(c.name)} — all done with the ${j.service.toLowerCase()} today, `+
+    `thanks for having us out.`+
+    (bal>0?` There's ${money2(bal)} outstanding when you get a chance.`:``)+
+    (REVIEW_URL?`
+
+If you've got a minute, how did we do? ${REVIEW_URL}`:``)+
+    (biz?`
+
+— ${biz}`:``);
+}
+function openSms(c,j,preset,postJob){
   if(!c){toast("No customer to text","err");return;}
-  smsCtx={c,j:j||null};
-  $("#sms-title").textContent="Text "+c.name;
+  smsCtx={c,j:j||null,postJob:!!postJob};
+  $("#sms-title").textContent=postJob?("Post-job message — "+c.name):("Text "+c.name);
   $("#sms-to").value=c.phone||"";
   $("#sms-body").value=preset||"";
   // The chips used to paste {tokens} that applying a template expanded. Nothing expands them
@@ -1823,7 +1840,9 @@ function openSms(c,j,preset){
   $("#sms-vars").querySelectorAll(".chip").forEach(b=>b.onclick=()=>insertAt($("#sms-body"),b.dataset.ins));
   updateCounter();
   $("#sms-send").textContent="📱 Open in app";
-  $("#sms-note").innerHTML=`Opens your messaging app with the text pre-filled — just press send.`;
+  $("#sms-note").innerHTML=postJob
+    ? `Written for you — edit anything, then press send.`
+    : `Opens your messaging app with the text pre-filled — just press send.`;
   $("#sms-overlay").classList.add("show");
 }
 function updateCounter(){const len=$("#sms-body").value.length,seg=Math.max(1,Math.ceil(len/160));

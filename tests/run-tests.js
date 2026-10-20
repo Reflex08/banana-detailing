@@ -234,6 +234,30 @@ eq("a fee the owner chose is left alone",
      settings: { business: { name: "X", cancelFeePct: 35 }, services: K.DEFAULT_SERVICES },
      seqC: 1, seqJ: 1 }).settings.business.cancelFeePct, 35);
 
+/* ---------- the post-job message ----------
+   Marking a job Done opens this straight away, pre-written. */
+A.__setDb(A.normalize({
+  customers: [{ id: 1, name: "Marcus Webb", phone: "+15550102", log: [] }],
+  jobs: [{ id: 3, customerId: 1, service: "Interior Detail", price: 150, collected: 150,
+           date: "2026-10-14", status: "completed", completedAt: 1 },
+         { id: 4, customerId: 1, service: "Ceramic Coating", price: 650, collected: 400,
+           date: "2026-10-15", status: "completed", completedAt: 1 }],
+  settings: K.DEFAULT_SETTINGS(), seqC: 2, seqJ: 5,
+}));
+const pjPaid = A.postJobMessage(A.__getDb().customers[0], A.__getDb().jobs[0]);
+ok("it greets them by first name", pjPaid.startsWith("Hi Marcus"), pjPaid);
+ok("it names the job that was done", pjPaid.includes("interior detail"), pjPaid);
+ok("it signs off as the business", pjPaid.includes("Banana Detailing"), pjPaid);
+ok("a paid job asks for no money", !/outstanding/.test(pjPaid), pjPaid);
+const pjOwed = A.postJobMessage(A.__getDb().customers[0], A.__getDb().jobs[1]);
+ok("an unpaid job states the balance",
+   pjOwed.includes("$250.00") && pjOwed.includes("outstanding"), pjOwed);
+// Igor has no Google listing wired up yet, so no link goes out rather than a broken one.
+ok("no review link until one is set", !/http/.test(pjPaid), pjPaid);
+ok("Done opens the message instead of a toast button",
+   script.includes("openSms(c,j,postJobMessage(c,j),true)") && !script.includes("toastAction"));
+ok("money is formatted in a pinned locale", script.includes('toLocaleString("en-CA"'));
+
 /* ---------- storage namespace ---------- */
 ok("storage namespace is banana, never servicepro",
    K.KEY.startsWith("banana.") && !script.includes("servicepro"), K.KEY);
