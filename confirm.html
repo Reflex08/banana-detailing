@@ -84,6 +84,7 @@
   .ck{width:60px;height:60px;border-radius:50%;background:var(--leaf-soft);color:var(--leaf);
     font-size:30px;font-weight:800;line-height:60px;margin:0 auto 15px}
   .headline{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--cocoa)}
+  .note{color:var(--muted);font-size:13.5px;margin-top:10px;line-height:1.55}
   .msgbox{background:var(--wash);border-radius:12px;padding:14px;font-size:12.5px;
     color:var(--muted);margin-top:14px;text-align:left;line-height:1.5}
   .err{text-align:center;color:var(--muted);padding:48px 0;line-height:1.65}
@@ -189,27 +190,38 @@ function render(){
     var t=document.getElementById("terms");t.classList.toggle("open");
     rev.textContent=t.classList.contains("open")?"Hide terms and conditions":"Terms and conditions";};
 
+  /* Did the record actually land? Both channels are someone else's uptime -- the relay
+     may be undeployed and FormSubmit answers 200 with success:false until its address
+     has been activated -- so neither one is assumed to have worked. */
+  function post(url,body){
+    var ctl=window.AbortController?new AbortController():null;
+    var t=ctl?setTimeout(function(){ctl.abort();},9000):0;
+    return fetch(url,{method:"POST",
+        headers:{"Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
+      .then(function(r){
+        if(!r.ok)return false;
+        // the relay replies in plain text, so a body that will not parse is still a yes
+        return r.json().then(function(j){return String(j&&j.success)!=="false";},
+                             function(){return true;});
+      })
+      .catch(function(){return false;})
+      .then(function(ok){if(t)clearTimeout(t);return ok;});
+  }
+
   go.onclick=function(){
     if(!chk.checked)return;
-    // No pre-made message for the client to send back any more (removed 2026-10-30 at the
-    // owner's request): confirming here is enough — the relay tick below and the emailed
-    // record are the proof, and the client just sees the thank-you.
+    // The client is finished here: no message for them to send on (removed 2026-10-30 at
+    // the owner's request). The tick goes up straight away because the record is already
+    // theirs; the two sends below only decide whether a warning joins it.
     document.getElementById("cta").innerHTML=
       '<div class="done"><div class="ck">&#10003;</div>'+
-      '<div class="headline">Confirmed — thank you!</div></div>';
+      '<div class="headline">Confirmed — thank you!</div>'+
+      '<div id="warn"></div></div>';
     // Tell the CRM directly so the booking ticks itself; the app polls this every minute.
-    if(d.r&&d.j&&d.j.length){
-      try{
-        fetch(d.r+"/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({jobIds:d.j,cid:d.c,name:d.n})}).catch(function(){});
-      }catch(e){}
-    }
-    // Written proof emailed to the business the moment they agree. Fire-and-forget.
-    if(d.e){
-      try{
-        fetch("https://formsubmit.co/ajax/"+encodeURIComponent(d.e),{method:"POST",
-          headers:{"Content-Type":"application/json","Accept":"application/json"},
-          body:JSON.stringify({
+    var sent=[];
+    if(d.r&&d.j&&d.j.length)sent.push(post(d.r+"/confirm",{jobIds:d.j,cid:d.c,name:d.n}));
+    if(d.e)sent.push(post("https://formsubmit.co/ajax/"+encodeURIComponent(d.e),{
             _subject:"CONFIRMED — "+d.n+" ("+d.s+", "+when+")",
             _template:"table",
             client:d.n, service:d.s, vehicle:d.v||"—",
@@ -219,9 +231,15 @@ function render(){
             agreed_at:new Date().toString(),
             terms_shown:TERMS.map(function(x){return x[0]+": "+fee(x[1]);}).join(" | "),
             cancellation_fee:feePct
-          })}).catch(function(){});
-      }catch(e){}
-    }
+    }));
+    if(!sent.length)sent.push(Promise.resolve(false));
+    Promise.all(sent).then(function(res){
+      if(res.indexOf(true)>-1)return;              // something took it; nothing to say
+      var w=document.getElementById("warn"); if(!w)return;
+      w.innerHTML='<div class="note">We could not reach the office automatically.'+
+        (d.ph?' Please call <a href="tel:'+esc(digits(d.ph))+'">'+esc(phone)+
+              '</a> so we know to expect you.':'')+'</div>';
+    });
   };
 }
 render();
