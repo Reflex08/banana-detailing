@@ -84,7 +84,6 @@
   .ck{width:60px;height:60px;border-radius:50%;background:var(--leaf-soft);color:var(--leaf);
     font-size:30px;font-weight:800;line-height:60px;margin:0 auto 15px}
   .headline{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--cocoa)}
-  .note{color:var(--muted);font-size:13.5px;margin-top:10px;line-height:1.55}
   .msgbox{background:var(--wash);border-radius:12px;padding:14px;font-size:12.5px;
     color:var(--muted);margin-top:14px;text-align:left;line-height:1.5}
   .err{text-align:center;color:var(--muted);padding:48px 0;line-height:1.65}
@@ -197,8 +196,7 @@ function render(){
     // record are the proof, and the client just sees the thank-you.
     document.getElementById("cta").innerHTML=
       '<div class="done"><div class="ck">&#10003;</div>'+
-      '<div class="headline">Confirmed — thank you!</div>'+
-      '<div class="note">You\'re all set — there\'s nothing you need to send us.</div></div>';
+      '<div class="headline">Confirmed — thank you!</div></div>';
     // Tell the CRM directly so the booking ticks itself; the app polls this every minute.
     if(d.r&&d.j&&d.j.length){
       try{
