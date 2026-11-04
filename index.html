@@ -1162,7 +1162,7 @@ function renderSettings(){
          <div class="field"><label>Confirmation email</label><input id="biz-notify" type="email" value="${esc(s.business.notify||"")}"></div>
          <div class="field pre"><label>Late-cancellation fee</label><span class="sym" style="top:33px">%</span><input id="biz-fee" type="number" min="0" max="100" step="5" style="padding-left:26px" value="${+s.business.cancelFeePct||0}"></div>
          <div class="hint">Your business name fills the <b>{business}</b> variable in every text.
-           Signed contracts open a prefilled email to the confirmation address — press Send in your mail app.</div>
+           When a client confirms, the signed record is emailed to the confirmation address on its own — nothing to send.</div>
        </div></div>
        <div class="panel"><h2>🧰 Services &amp; default prices <span class="spacer"></span><button class="btn sm btn-primary" id="svc-add">＋ Add</button></h2>
          <div class="panel-pad" id="svc-list"></div></div>
