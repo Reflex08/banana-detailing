@@ -213,24 +213,19 @@ function render(){
     if(!chk.checked)return;
     // The client is finished here: no message for them to send on (removed 2026-10-30 at
     // the owner's request). The tick goes up straight away because the record is already
-    // theirs; the two sends below only decide whether a warning joins it.
+    // theirs; the one send below only decides whether a warning joins it. The relay mails
+    // the owner from its own end, so the page has nothing else to reach.
     document.getElementById("cta").innerHTML=
       '<div class="done"><div class="ck">&#10003;</div>'+
       '<div class="headline">Confirmed — thank you!</div>'+
       '<div id="warn"></div></div>';
     // Tell the CRM directly so the booking ticks itself; the app polls this every minute.
     var sent=[];
-    if(d.r&&d.j&&d.j.length)sent.push(post(d.r+"/confirm",{jobIds:d.j,cid:d.c,name:d.n}));
-    if(d.e)sent.push(post("https://formsubmit.co/ajax/"+encodeURIComponent(d.e),{
-            _subject:"CONFIRMED — "+d.n+" ("+d.s+", "+when+")",
-            _template:"table",
-            client:d.n, service:d.s, vehicle:d.v||"—",
-            date:when, time:time||"anytime", address:d.a||"—",
-            price:fmtMoney(d.p),
-            agreed:"Yes — confirmed the appointment and accepted the terms",
-            agreed_at:new Date().toString(),
-            terms_shown:TERMS.map(function(x){return x[0]+": "+fee(x[1]);}).join(" | "),
-            cancellation_fee:feePct
+    if(d.r&&d.j&&d.j.length)sent.push(post(d.r+"/confirm",{
+      jobIds:d.j, cid:d.c, name:d.n,
+      service:d.s, when:when+(time?", "+time:""), address:d.a||"",
+      price:fmtMoney(d.p),
+      terms:TERMS.map(function(x){return x[0];}).join(", ")
     }));
     if(!sent.length)sent.push(Promise.resolve(false));
     Promise.all(sent).then(function(res){

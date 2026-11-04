@@ -1757,7 +1757,7 @@ async function pullConfirms(){
    no server and no database. Keep the payload keys short — a long URL gets mangled by some
    SMS apps. `ph` is optional: with no separate business line the link goes out from the
    owner's own phone, so the client already has that thread to reply in. */
-const CONFIRM_VER="8";   // bump on every confirm.html change
+const CONFIRM_VER="9";   // bump on every confirm.html change
 function confirmLink(id){
   const j=db.jobs.find(x=>x.id===id); if(!j)return null;
   const biz=db.settings.business||{};
