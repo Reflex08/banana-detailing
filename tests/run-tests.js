@@ -296,6 +296,11 @@ ok("no real phone numbers are baked into the app",
   ok("confirm.html delivery behaviour", r.status === 0, (r.stdout || "") + (r.stderr || ""));
 }
 
+/* The relay is deployed now, so an unset RELAY is a regression, and the two forks must
+   never share one: both number their jobs from 1, so a shared relay cross-confirms. */
+ok("RELAY points at a deployed worker", !K.RELAY.includes("REPLACE") && /^https:\/\/\S+\.workers\.dev$/.test(K.RELAY), K.RELAY);
+ok("RELAY is this fork's own worker", K.RELAY.includes("banana-confirm-relay"), K.RELAY);
+
 const total = pass + fails.length;
 if (fails.length) {
   console.log("\n" + fails.length + " of " + total + " checks FAILED:\n");

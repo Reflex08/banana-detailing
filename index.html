@@ -1723,7 +1723,7 @@ $("#job-overlay").addEventListener("click",e=>{if(backdropTap(e,$("#job-overlay"
    RELAY is a tiny Cloudflare worker (see relay/ in this repo). It exists only so a client
    tapping Confirm on their own phone can reach this app, which has no backend of its own.
    Leave RELAY empty and everything still works — the tick just has to be done by hand. */
-const RELAY="https://banana-confirm-relay.REPLACE.workers.dev";
+const RELAY="https://banana-confirm-relay.confirm-relay.workers.dev";
 const RELAY_KEY="bn-39515b84e20e5a76";
 const CONF_SEEN="banana.confseen";
 /* Poll for "the client agreed" and tick the job. Runs on load and every minute after.
@@ -1757,7 +1757,7 @@ async function pullConfirms(){
    no server and no database. Keep the payload keys short — a long URL gets mangled by some
    SMS apps. `ph` is optional: with no separate business line the link goes out from the
    owner's own phone, so the client already has that thread to reply in. */
-const CONFIRM_VER="7";   // bump on every confirm.html change
+const CONFIRM_VER="8";   // bump on every confirm.html change
 function confirmLink(id){
   const j=db.jobs.find(x=>x.id===id); if(!j)return null;
   const biz=db.settings.business||{};

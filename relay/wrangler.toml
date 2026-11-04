@@ -6,7 +6,7 @@ compatibility_date = "2026-10-01"
 # Paste the printed id below before the first deploy.
 [[kv_namespaces]]
 binding = "CONF"
-id = "REPLACE_WITH_KV_ID"
+id = "3afa7fac847b4c4ab14fee63482182d9"
 
 [vars]
 # Read-only key for the CRM's minute poll. Public by necessity (it ships inside the
